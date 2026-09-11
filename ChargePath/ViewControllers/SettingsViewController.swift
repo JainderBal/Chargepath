@@ -28,6 +28,16 @@ final class SettingsViewController: UIViewController {
     private let appInfoLabel = UILabel(font: AppFont.body(14), color: AppColor.stone, alignment: .right)
     private let bookmarksStack = UIStackView(axis: .vertical, spacing: AppMetrics.space2)
 
+    // Static copy re-applied by `applyStrings(_:)` whenever the language
+    // changes — everything else on this screen is already a live Rx binding.
+    private let headingLabel = UILabel(font: AppFont.display(30))
+    private let vehicleCaptionLabel = UILabel(font: AppFont.body(13), color: AppColor.stone)
+    private let langLabel = UILabel(font: AppFont.slab(17, weight: .semibold))
+    private let walletTitleLabel = UILabel(font: AppFont.slab(17, weight: .semibold))
+    private let walletSubLabel = UILabel(font: AppFont.body(13), color: AppColor.stone)
+    private let aboutLabel = UILabel(font: AppFont.slab(17, weight: .semibold))
+    private let bookmarksSectionLabel = UILabel(font: AppFont.slab(13, weight: .bold), color: AppColor.stone)
+
     init(viewModel: SettingsViewModel) {
         self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
@@ -68,14 +78,11 @@ final class SettingsViewController: UIViewController {
         view.addAutoLayoutSubview(scrollView)
         scrollView.pinEdges(to: view)
 
-        let s = viewModel.strings.value
-        let heading = UILabel(text: s.settingsTitle, font: AppFont.display(30))
-
         let stack = UIStackView(axis: .vertical, spacing: AppMetrics.space4, arrangedSubviews: [
-            heading,
-            makeVehicleRow(s),
-            makeOptionsCard(s),
-            sectionLabel(s.settingsBookmarkedStations),
+            headingLabel,
+            makeVehicleRow(),
+            makeOptionsCard(),
+            bookmarksSectionLabel,
             bookmarksStack
         ])
         scrollView.addAutoLayoutSubview(stack)
@@ -87,10 +94,9 @@ final class SettingsViewController: UIViewController {
         ])
     }
 
-    private func makeVehicleRow(_ s: Strings) -> UIView {
+    private func makeVehicleRow() -> UIView {
         let icon = iconTile("bolt.fill", background: AppColor.sky)
-        let caption = UILabel(text: s.settingsVehicleProfile, font: AppFont.body(13), color: AppColor.stone)
-        let text = UIStackView(axis: .vertical, spacing: 2, arrangedSubviews: [caption, vehicleValueLabel])
+        let text = UIStackView(axis: .vertical, spacing: 2, arrangedSubviews: [vehicleCaptionLabel, vehicleValueLabel])
         text.setContentHuggingPriority(.defaultLow, for: .horizontal)
         let chevron = chevronView()
 
@@ -103,12 +109,11 @@ final class SettingsViewController: UIViewController {
         return card
     }
 
-    private func makeOptionsCard(_ s: Strings) -> UIView {
+    private func makeOptionsCard() -> UIView {
         let card = OutlinedCardView(contentInset: 0)
         card.contentStack.spacing = 0
 
         // Language
-        let langLabel = UILabel(text: s.settingsLanguage, font: AppFont.slab(17, weight: .semibold))
         langLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
         languageToggle.widthAnchor.constraint(equalToConstant: 96).isActive = true
         languageToggle.onSelect = { [weak viewModel] index in
@@ -118,9 +123,7 @@ final class SettingsViewController: UIViewController {
         card.contentStack.addArrangedSubview(hairline())
 
         // Wallet
-        let walletTitle = UILabel(text: s.walletTitle, font: AppFont.slab(17, weight: .semibold))
-        let walletSub = UILabel(text: s.walletSubtitle, font: AppFont.body(13), color: AppColor.stone)
-        let walletText = UIStackView(axis: .vertical, spacing: 2, arrangedSubviews: [walletTitle, walletSub])
+        let walletText = UIStackView(axis: .vertical, spacing: 2, arrangedSubviews: [walletTitleLabel, walletSubLabel])
         walletText.setContentHuggingPriority(.defaultLow, for: .horizontal)
         let walletRow = paddedRow([walletText, walletValueLabel, chevronView()])
         addTap(to: walletRow) { [weak viewModel] in viewModel?.openWallet() }
@@ -128,7 +131,6 @@ final class SettingsViewController: UIViewController {
         card.contentStack.addArrangedSubview(hairline())
 
         // App info
-        let aboutLabel = UILabel(text: s.settingsAppInfo, font: AppFont.slab(17, weight: .semibold))
         aboutLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
         appInfoLabel.text = viewModel.appVersionText
         card.contentStack.addArrangedSubview(paddedRow([aboutLabel, appInfoLabel]))
@@ -139,6 +141,10 @@ final class SettingsViewController: UIViewController {
     // MARK: Bindings
 
     private func bind() {
+        viewModel.strings
+            .subscribe(onNext: { [weak self] strings in self?.applyStrings(strings) })
+            .disposed(by: disposeBag)
+
         viewModel.vehicleName.bind(to: vehicleValueLabel.rx.text).disposed(by: disposeBag)
         viewModel.walletBalanceText.bind(to: walletValueLabel.rx.text).disposed(by: disposeBag)
 
@@ -151,6 +157,20 @@ final class SettingsViewController: UIViewController {
         viewModel.bookmarkedStations
             .subscribe(onNext: { [weak self] stations in self?.renderBookmarks(stations) })
             .disposed(by: disposeBag)
+    }
+
+    /// Re-applies every static string on the screen — called once at launch
+    /// and again on every language switch, so this is the one screen that
+    /// used to freeze at whatever language it first rendered in.
+    private func applyStrings(_ strings: Strings) {
+        headingLabel.text = strings.settingsTitle
+        vehicleCaptionLabel.text = strings.settingsVehicleProfile
+        langLabel.text = strings.settingsLanguage
+        walletTitleLabel.text = strings.walletTitle
+        walletSubLabel.text = strings.walletSubtitle
+        aboutLabel.text = strings.settingsAppInfo
+        bookmarksSectionLabel.text = strings.settingsBookmarkedStations.uppercased()
+        renderBookmarks(viewModel.bookmarkedStations.value)
     }
 
     private func renderBookmarks(_ stations: [Station]) {
@@ -180,10 +200,6 @@ final class SettingsViewController: UIViewController {
     }
 
     // MARK: Small builders
-
-    private func sectionLabel(_ text: String) -> UILabel {
-        UILabel(text: text.uppercased(), font: AppFont.slab(13, weight: .bold), color: AppColor.stone)
-    }
 
     private func paddedRow(_ views: [UIView]) -> UIView {
         let row = UIStackView(axis: .horizontal, spacing: AppMetrics.space3,
