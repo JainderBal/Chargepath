@@ -24,6 +24,7 @@ final class StationDetailViewModel {
 
     // MARK: Navigation hooks
     var onStartCharging: ((Station) -> Void)?
+    var onStartNavigation: ((Station) -> Void)?
 
     // MARK: Outputs
     let station: BehaviorRelay<Station>
@@ -84,6 +85,11 @@ final class StationDetailViewModel {
     func startCharging() {
         guard startEnabled.value else { return }
         onStartCharging?(station.value)
+    }
+
+    /// "Directions" — start in-app turn-by-turn straight to this station.
+    func startNavigation() {
+        onStartNavigation?(station.value)
     }
 
     // MARK: Binding
