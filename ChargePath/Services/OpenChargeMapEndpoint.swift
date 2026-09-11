@@ -35,9 +35,11 @@ enum OpenChargeMapEndpoint: URLRequestConvertible {
             let maxLat = region.center.latitude + region.span.latitudeDelta / 2
             let minLon = region.center.longitude - region.span.longitudeDelta / 2
             let maxLon = region.center.longitude + region.span.longitudeDelta / 2
+            // `verbose=false` trims bulky metadata but keeps the expanded
+            // reference objects (ConnectionType.Title, Level, StatusType) the
+            // DTO needs — `compact=true` would strip those down to bare IDs.
             var items = [
                 URLQueryItem(name: "output", value: "json"),
-                URLQueryItem(name: "compact", value: "true"),
                 URLQueryItem(name: "verbose", value: "false"),
                 URLQueryItem(name: "maxresults", value: String(maxResults)),
                 URLQueryItem(
