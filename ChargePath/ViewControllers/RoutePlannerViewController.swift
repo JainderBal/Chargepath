@@ -39,6 +39,7 @@ final class RoutePlannerViewController: UIViewController {
         text: "  Offline estimate — couldn't reach routing. Distances and times are illustrative.  ",
         font: AppFont.body(12, weight: .semibold), color: AppColor.ink)
     private let stopsStack = UIStackView(axis: .vertical, spacing: AppMetrics.space3)
+    private lazy var navButton = PillButton(title: viewModel.strings.value.navStartButton, style: .primary)
 
     init(viewModel: RoutePlannerViewModel) {
         self.viewModel = viewModel
@@ -169,7 +170,9 @@ final class RoutePlannerViewController: UIViewController {
         estimateNote.numberOfLines = 0
         estimateNote.isHidden = true
 
-        [backButton, resultsMap, titleRow, estimateNote, stopsStack]
+        navButton.onTap = { [weak viewModel] in viewModel?.startNavigation() }
+
+        [backButton, resultsMap, titleRow, estimateNote, navButton, stopsStack]
             .forEach { resultsContainer.addArrangedSubview($0) }
         resultsContainer.setCustomSpacing(AppMetrics.space3, after: backButton)
     }
@@ -210,6 +213,7 @@ final class RoutePlannerViewController: UIViewController {
         viewModel.strings
             .subscribe(onNext: { [weak self] strings in
                 self?.routeTitleLabel.text = strings.routeResultsTitle
+                self?.navButton.setTitle(strings.navStartButton, for: .normal)
             })
             .disposed(by: disposeBag)
 
