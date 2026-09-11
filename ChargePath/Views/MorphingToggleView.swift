@@ -60,6 +60,16 @@ final class MorphingToggleView: UIControl {
     private lazy var indicatorLeading: NSLayoutConstraint =
         indicator.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 3)
 
+    /// Re-applies the two labels' text — for a toggle whose options are
+    /// localized copy (e.g. Map's All/Bookmarked segment) rather than fixed
+    /// codes (EN/FR), call this again whenever the app language changes.
+    func setTitles(_ titles: [String]) {
+        precondition(titles.count == 2, "MorphingToggleView supports exactly two options")
+        for (label, title) in zip(labels, titles) {
+            label.text = title
+        }
+    }
+
     func setSelectedIndex(_ index: Int, animated: Bool) {
         selectedIndex = index
         let offset = index == 0 ? 3 : bounds.width / 2
