@@ -40,8 +40,11 @@ struct NavUpdate: Equatable {
 enum TurnByTurnError: Error {
     /// No API key configured, or the SDK could not be initialised.
     case unavailable
-    /// The engine could not build a route to the given waypoints.
-    case noRoute
+    /// The engine could not build a route to the given waypoints. `reason`
+    /// is the vendor's raw status (e.g. "locationUnavailable",
+    /// "noRouteFound") for diagnostics — surfaced in the placeholder text and
+    /// logged, so a real key/SDK failure doesn't read the same as "no key".
+    case routeFailed(reason: String)
 }
 
 protocol TurnByTurnNavigator: AnyObject {
