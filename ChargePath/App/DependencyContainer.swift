@@ -102,6 +102,20 @@ final class DependencyContainer {
         )
     }
 
+    func makeNavigationViewModel(plan: RoutePlan, destinationTitle: String) -> NavigationViewModel {
+        NavigationViewModel(
+            waypoints: NavigationViewModel.waypoints(for: plan, destinationTitle: destinationTitle),
+            localizationRepository: localizationRepository
+        )
+    }
+
+    func makeNavigationViewModel(destination station: Station) -> NavigationViewModel {
+        NavigationViewModel(
+            waypoints: NavigationViewModel.waypoints(for: station),
+            localizationRepository: localizationRepository
+        )
+    }
+
     func makeSettingsViewModel() -> SettingsViewModel {
         SettingsViewModel(
             vehicleRepository: vehicleRepository,
