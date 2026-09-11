@@ -29,6 +29,9 @@ final class RoutePlannerViewController: UIViewController {
     private let vehicleLineLabel = UILabel(font: AppFont.slab(17, weight: .bold))
     private lazy var planButton = PillButton(title: viewModel.strings.value.routePlanButton, style: .dark)
     private let hintLabel = UILabel(font: AppFont.body(13), color: AppColor.stone, alignment: .center)
+    private let inputHeadingLabel = UILabel(font: AppFont.display(30))
+    private let vehicleCaptionLabel = UILabel(font: AppFont.body(13), color: AppColor.stone)
+    private let editVehicleButton = UIButton(type: .system)
 
     // Results stage
     private let resultsContainer = UIStackView(axis: .vertical, spacing: AppMetrics.space4)
@@ -96,16 +99,11 @@ final class RoutePlannerViewController: UIViewController {
     }
 
     private func buildInputStage() {
-        let s = viewModel.strings.value
-        let heading = UILabel(text: s.routeInputHeading, font: AppFont.display(30))
-
         [originField, destinationField].forEach {
             $0.font = AppFont.body(16)
             $0.textColor = AppColor.ink
             $0.autocorrectionType = .no
         }
-        originField.placeholder = s.routeStartPlaceholder
-        destinationField.placeholder = s.routeDestinationPlaceholder
         // Seed the fields from the ViewModel's initial trip (editable after).
         originField.text = viewModel.originText.value
         destinationField.text = viewModel.destinationText.value
@@ -122,24 +120,20 @@ final class RoutePlannerViewController: UIViewController {
         let bolt = UIImageView(image: UIImage(systemName: "bolt.fill"))
         bolt.tintColor = AppColor.ink
         bolt.setContentHuggingPriority(.required, for: .horizontal)
-        let caption = UILabel(text: s.routeVehicleProfileCaption, font: AppFont.body(13), color: AppColor.stone)
-        let vehText = UIStackView(axis: .vertical, spacing: 2, arrangedSubviews: [caption, vehicleLineLabel])
+        let vehText = UIStackView(axis: .vertical, spacing: 2, arrangedSubviews: [vehicleCaptionLabel, vehicleLineLabel])
         vehText.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        let editButton = UIButton(type: .system)
-        editButton.setTitle(s.routeEditVehicle, for: .normal)
-        editButton.setTitleColor(AppColor.orange, for: .normal)
-        editButton.titleLabel?.font = AppFont.body(14, weight: .semibold)
-        editButton.addTarget(self, action: #selector(editVehicle), for: .touchUpInside)
+        editVehicleButton.setTitleColor(AppColor.orange, for: .normal)
+        editVehicleButton.titleLabel?.font = AppFont.body(14, weight: .semibold)
+        editVehicleButton.addTarget(self, action: #selector(editVehicle), for: .touchUpInside)
         let vehicleRow = OutlinedCardView(fill: AppColor.sand, cornerRadius: 22, contentInset: AppMetrics.space4, shadowOffsetY: 0)
         vehicleRow.contentStack.axis = .horizontal
         vehicleRow.contentStack.alignment = .center
         vehicleRow.contentStack.spacing = AppMetrics.space3
-        [bolt, vehText, editButton].forEach { vehicleRow.contentStack.addArrangedSubview($0) }
+        [bolt, vehText, editVehicleButton].forEach { vehicleRow.contentStack.addArrangedSubview($0) }
 
         planButton.onTap = { [weak viewModel] in viewModel?.planTrip() }
-        hintLabel.text = s.routePlanHint
 
-        [heading, fieldsCard, vehicleRow, planButton, hintLabel]
+        [inputHeadingLabel, fieldsCard, vehicleRow, planButton, hintLabel]
             .forEach { inputContainer.addArrangedSubview($0) }
     }
 
@@ -213,6 +207,12 @@ final class RoutePlannerViewController: UIViewController {
             .subscribe(onNext: { [weak self] strings in
                 self?.routeTitleLabel.text = strings.routeResultsTitle
                 self?.navButton.setTitle(strings.navStartButton, for: .normal)
+                self?.inputHeadingLabel.text = strings.routeInputHeading
+                self?.originField.placeholder = strings.routeStartPlaceholder
+                self?.destinationField.placeholder = strings.routeDestinationPlaceholder
+                self?.vehicleCaptionLabel.text = strings.routeVehicleProfileCaption
+                self?.editVehicleButton.setTitle(strings.routeEditVehicle, for: .normal)
+                self?.hintLabel.text = strings.routePlanHint
             })
             .disposed(by: disposeBag)
 
