@@ -62,3 +62,17 @@ protocol TurnByTurnNavigator: AnyObject {
     func startGuidance()
     func stopGuidance()
 }
+
+/// Stand-in used when the Google Navigation SDK isn't linked or has no API
+/// key. `NavigationViewController` shows its "set GOOGLE_MAPS_API_KEY"
+/// placeholder whenever `isAvailable` is false.
+final class UnavailableTurnByTurnNavigator: TurnByTurnNavigator {
+    let isAvailable = false
+    var updates: Observable<NavUpdate> { .never() }
+    var didArrive: Observable<Void> { .never() }
+    func setDestinations(_ waypoints: [NavWaypoint]) -> Single<Void> {
+        .error(TurnByTurnError.unavailable)
+    }
+    func startGuidance() {}
+    func stopGuidance() {}
+}
