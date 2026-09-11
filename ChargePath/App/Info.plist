@@ -42,10 +42,20 @@
 	</array>
 
 	<!--
-	  No NSLocationWhenInUseUsageDescription: this build uses a fixed Montréal
-	  location (FixedLocationService) so it needs no CoreLocation permission.
-	  Re-add this key if you wire SystemLocationService back in.
+	  The Map tab uses a fixed Montréal location (FixedLocationService). The
+	  in-app turn-by-turn Navigation screen (Google Navigation SDK) needs a
+	  real fix, hence these keys + the "location" / "audio" background modes
+	  (so voice guidance keeps running when the app is backgrounded).
 	-->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>ChargePath uses your location to guide you turn-by-turn to charging stops and your destination.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>ChargePath keeps guiding you and announcing turns even when the app is in the background.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>audio</string>
+	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchScreen</key>
