@@ -10,6 +10,7 @@
 		CA0000000000000000000C01 /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = CA0000000000000000000B01 /* Alamofire */; };
 		CA0000000000000000000C02 /* RxSwift in Frameworks */ = {isa = PBXBuildFile; productRef = CA0000000000000000000B02 /* RxSwift */; };
 		CA0000000000000000000C03 /* RxCocoa in Frameworks */ = {isa = PBXBuildFile; productRef = CA0000000000000000000B03 /* RxCocoa */; };
+		CA0000000000000000000C04 /* GoogleNavigation in Frameworks */ = {isa = PBXBuildFile; productRef = CA0000000000000000000B04 /* GoogleNavigation */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -53,6 +54,7 @@
 				CA0000000000000000000C01 /* Alamofire in Frameworks */,
 				CA0000000000000000000C02 /* RxSwift in Frameworks */,
 				CA0000000000000000000C03 /* RxCocoa in Frameworks */,
+				CA0000000000000000000C04 /* GoogleNavigation in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -117,6 +119,7 @@
 				CA0000000000000000000B01 /* Alamofire */,
 				CA0000000000000000000B02 /* RxSwift */,
 				CA0000000000000000000B03 /* RxCocoa */,
+				CA0000000000000000000B04 /* GoogleNavigation */,
 			);
 			productName = ChargePath;
 			productReference = BA4692FD304CDE5700EBA08F /* ChargePath.app */;
@@ -177,6 +180,7 @@
 			packageReferences = (
 				CA0000000000000000000A01 /* XCRemoteSwiftPackageReference "Alamofire" */,
 				CA0000000000000000000A02 /* XCRemoteSwiftPackageReference "RxSwift" */,
+				CA0000000000000000000A03 /* XCRemoteSwiftPackageReference "ios-navigation-sdk" */,
 			);
 			productRefGroup = BA4692FE304CDE5700EBA08F /* Products */;
 			projectDirPath = "";
@@ -511,6 +515,14 @@
 				minimumVersion = 6.7.0;
 			};
 		};
+		CA0000000000000000000A03 /* XCRemoteSwiftPackageReference "ios-navigation-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googlemaps/ios-navigation-sdk";
+			requirement = {
+				kind = exactVersion;
+				version = 11.1.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -528,6 +540,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = CA0000000000000000000A02 /* XCRemoteSwiftPackageReference "RxSwift" */;
 			productName = RxCocoa;
+		};
+		CA0000000000000000000B04 /* GoogleNavigation */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CA0000000000000000000A03 /* XCRemoteSwiftPackageReference "ios-navigation-sdk" */;
+			productName = GoogleNavigation;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
