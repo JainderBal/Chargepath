@@ -14,6 +14,10 @@
 
 import UIKit
 import RxSwift
+import CoreLocation
+import OSLog
+
+private let navLog = Logger(subsystem: "com.chargepath.app", category: "Navigation")
 
 /// One-call factory the Navigation screen uses to obtain its map view + a
 /// navigator bound to it. Split out so the ViewController never imports the
@@ -34,16 +38,36 @@ enum NavigationEngine {
     }
 
     /// Show Google's terms-of-service dialog once (the Navigation SDK refuses
-    /// to start guidance until it's accepted), then continue. A no-op when the
-    /// SDK isn't linked / configured.
+    /// to start guidance until it's accepted), request location authorization
+    /// (the SDK routes from the live GPS fix — with no fix, `setDestinations`
+    /// fails), then continue. A no-op when the SDK isn't linked / configured.
     static func ensureConsent(then continuation: @escaping () -> Void) {
         #if canImport(GoogleNavigation)
         if isConfigured {
+            LocationAuthorizationRequester.shared.request()
             GoogleNavigationConsent.ensure(then: continuation)
             return
         }
         #endif
         continuation()
+    }
+}
+
+/// Fires the system location-permission prompt once (first launch) so the
+/// Navigation SDK has a chance at a GPS fix. Kept as a singleton so the
+/// `CLLocationManager` — and its delegate — isn't deallocated mid-request.
+final class LocationAuthorizationRequester: NSObject, CLLocationManagerDelegate {
+    static let shared = LocationAuthorizationRequester()
+    private let manager = CLLocationManager()
+
+    override private init() {
+        super.init()
+        manager.delegate = self
+    }
+
+    func request() {
+        guard manager.authorizationStatus == .notDetermined else { return }
+        manager.requestWhenInUseAuthorization()
     }
 }
 
@@ -98,7 +122,10 @@ final class GoogleTurnByTurnNavigator: NSObject, TurnByTurnNavigator {
 
     func setDestinations(_ waypoints: [NavWaypoint]) -> Single<Void> {
         Single.create { [mapView] observer in
+            navLog.info("setDestinations: \(waypoints.count) waypoint(s), location auth = \(CLLocationManager().authorizationStatus.rawValue)")
+
             guard let navigator = mapView.navigator else {
+                navLog.error("setDestinations: mapView.navigator is nil (SDK not enabled)")
                 observer(.failure(TurnByTurnError.unavailable))
                 return Disposables.create()
             }
@@ -106,13 +133,18 @@ final class GoogleTurnByTurnNavigator: NSObject, TurnByTurnNavigator {
                 GMSNavigationWaypoint(location: $0.coordinate, title: $0.title)
             }
             guard !gms.isEmpty else {
-                observer(.failure(TurnByTurnError.noRoute))
+                navLog.error("setDestinations: no valid GMSNavigationWaypoint from \(waypoints.count) input(s)")
+                observer(.failure(TurnByTurnError.routeFailed(reason: "invalidWaypoint")))
                 return Disposables.create()
             }
             navigator.setDestinations(gms) { routeStatus in
-                routeStatus == .OK
-                    ? observer(.success(()))
-                    : observer(.failure(TurnByTurnError.noRoute))
+                if routeStatus == .OK {
+                    observer(.success(()))
+                } else {
+                    let reason = String(describing: routeStatus)
+                    navLog.error("setDestinations failed: \(reason, privacy: .public)")
+                    observer(.failure(TurnByTurnError.routeFailed(reason: reason)))
+                }
             }
             return Disposables.create()
         }
