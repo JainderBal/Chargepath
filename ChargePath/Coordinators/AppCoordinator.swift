@@ -8,6 +8,7 @@
 //
 
 import UIKit
+import RxSwift
 
 final class AppCoordinator: Coordinator {
 
@@ -17,6 +18,10 @@ final class AppCoordinator: Coordinator {
     private let container = DependencyContainer()
     private let tabBarController = UITabBarController()
     private var mapCoordinator: MapCoordinator?
+    private var mapNav: UINavigationController?
+    private var routeNav: UINavigationController?
+    private var settingsNav: UINavigationController?
+    private let disposeBag = DisposeBag()
 
     init(window: UIWindow) {
         self.window = window
@@ -47,8 +52,23 @@ final class AppCoordinator: Coordinator {
         }
         addChild(settingsCoordinator)
 
+        self.mapNav = mapNav
+        self.routeNav = routeNav
+        self.settingsNav = settingsNav
+
         tabBarController.viewControllers = [mapNav, routeNav, settingsNav]
         styleTabBar()
+
+        // Tab titles are set once above from a snapshot; re-apply them live
+        // on every language switch (everything inside each tab already binds
+        // reactively — the tab bar itself didn't).
+        container.localizationRepository.strings
+            .subscribe(onNext: { [weak self] strings in
+                self?.mapNav?.tabBarItem.title = strings.tabMap
+                self?.routeNav?.tabBarItem.title = strings.tabRoute
+                self?.settingsNav?.tabBarItem.title = strings.tabSettings
+            })
+            .disposed(by: disposeBag)
 
         window.rootViewController = tabBarController
         window.makeKeyAndVisible()
