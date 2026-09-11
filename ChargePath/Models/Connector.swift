@@ -25,9 +25,12 @@ enum Connector: String, Codable, CaseIterable, Hashable {
         }
     }
 
-    /// Lenient parsing: ChargeHub / user input uses many spellings for the same
-    /// plug. Substring matching handles compound names like "J1772 Combo"
-    /// (= CCS) — order matters: check NACS, then Combo/CCS, then plain J1772.
+    /// Lenient parsing: ChargeHub / Open Charge Map / user input all use many
+    /// spellings for the same plug. Substring matching handles compound names
+    /// like "J1772 Combo" (= CCS) and OCM's "CCS (Type 1)" / "Type 1 (J1772)"
+    /// / "Tesla (Model S/X)" — order matters: check NACS, then Combo/CCS, then
+    /// plain J1772. OCM "CHAdeMO" / "Type 2" have no case here and fall through
+    /// to `.unknown`.
     init(apiValue raw: String) {
         let key = raw.uppercased()
         if key.contains("NACS") || key.contains("TESLA")
