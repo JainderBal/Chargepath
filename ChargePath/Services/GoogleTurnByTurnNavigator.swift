@@ -92,6 +92,10 @@ enum GoogleNavigationFactory {
     static func make() -> (mapView: UIView, navigator: TurnByTurnNavigator)? {
         let mapView = GMSMapView(frame: .zero)
         mapView.isNavigationEnabled = true
+        // Explicitly kick-starts this map view's own location updates — each
+        // fresh GMSMapView otherwise takes a beat to acquire a fix, which is
+        // what the retry loop below in `GoogleTurnByTurnNavigator` covers.
+        mapView.isMyLocationEnabled = true
         mapView.settings.compassButton = true
         mapView.cameraMode = .following
         guard mapView.navigator != nil else { return nil }
@@ -125,7 +129,7 @@ final class GoogleTurnByTurnNavigator: NSObject, TurnByTurnNavigator {
     /// own location provider getting its first GPS fix, even once permission
     /// is granted. A short backoff nearly always clears it; anything else
     /// fails immediately.
-    private static let locationRetryDelays: [TimeInterval] = [1, 2, 3]
+    private static let locationRetryDelays: [TimeInterval] = [1, 2, 3, 4, 5]
 
     func setDestinations(_ waypoints: [NavWaypoint]) -> Single<Void> {
         Single.create { [mapView] observer in
