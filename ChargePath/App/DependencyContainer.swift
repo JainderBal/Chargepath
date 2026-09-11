@@ -26,8 +26,15 @@ final class DependencyContainer {
     // the same protocol against a different vendor's API.
     private lazy var stationService: StationService =
         OpenChargeMapStationService(apiClient: apiClient, config: config)
-    private lazy var geocodingService: GeocodingService = AppleGeocodingService()
-    private lazy var directionsService: RouteDirectionsService = MapKitDirectionsService()
+    // Google geocoding/directions when a key is configured (Directions API's
+    // `departure_time=now` gives a traffic-aware ETA); CLGeocoder/MKDirections
+    // otherwise — same protocols either way, RouteRepository doesn't know.
+    private lazy var geocodingService: GeocodingService = config.hasGoogleMapsCredentials
+        ? GoogleGeocodingService(apiClient: apiClient, config: config)
+        : AppleGeocodingService()
+    private lazy var directionsService: RouteDirectionsService = config.hasGoogleMapsCredentials
+        ? GoogleRouteDirectionsService(apiClient: apiClient, config: config)
+        : MapKitDirectionsService()
     private lazy var paymentService: PaymentAuthService = MockPaymentAuthService()
     // Fixed Montréal position — no permission prompt, and the seeded stations
     // always land inside the default radius. Swap in SystemLocationService for
