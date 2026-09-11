@@ -87,11 +87,20 @@ final class NavigationViewModel {
 
     private func startGuidance() {
         guard let navigator, !waypoints.isEmpty else { return }
+        // The SDK can take a few seconds to get its first GPS fix (see the
+        // retry loop in GoogleTurnByTurnNavigator) — show *something* rather
+        // than a silent, seemingly-frozen map while that resolves.
+        #if targetEnvironment(simulator)
+        unavailableText.accept("Connecting to GPS… (Simulator has none by default — Features ▸ Location to set one)")
+        #else
+        unavailableText.accept("Connecting to GPS…")
+        #endif
         navigator.setDestinations(waypoints)
             .observe(on: MainScheduler.instance)
             .subscribe(onSuccess: { [weak self] in
                 navigator.startGuidance()
                 self?.isNavigating.accept(true)
+                self?.unavailableText.accept(nil)
             }, onFailure: { [weak self] error in
                 self?.unavailableText.accept(Self.message(for: error, strings: self?.strings.value))
             })
