@@ -86,7 +86,8 @@ final class RouteRepositoryTests: XCTestCase {
                 CLLocationCoordinate2D(latitude: 48.0, longitude: -71.0),
                 CLLocationCoordinate2D(latitude: 50.9, longitude: -68.0)
             ],
-            distanceMeters: 600_000))
+            distanceMeters: 600_000,
+            expectedTravelTimeSeconds: 6 * 3600))
         let repo = DefaultRouteRepository(
             geocoder: geocoder, directions: directions,
             stationRepository: StationRepositoryDouble(StationSeed.stations))
@@ -98,6 +99,8 @@ final class RouteRepositoryTests: XCTestCase {
         XCTAssertFalse(plan.isEstimate)
         XCTAssertGreaterThanOrEqual(plan.stops.count, 1)
         XCTAssertEqual(plan.totalDistanceKm, 600, accuracy: 1)
+        XCTAssertEqual(plan.driveTimeSeconds, 6 * 3600, accuracy: 1)
+        XCTAssertEqual(plan.driveTimeText, "6 h 0 min")
         // arrival SoC never planned below the 15% reserve
         for stop in plan.stops {
             XCTAssertGreaterThanOrEqual(stop.arrivalStateOfChargePercent, 15)
