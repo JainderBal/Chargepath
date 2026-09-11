@@ -21,8 +21,11 @@ final class DependencyContainer {
     private let config = APIConfig.default
     private lazy var keyValueStore: KeyValueStore = UserDefaultsKeyValueStore()
     private lazy var apiClient: APIClient = AlamofireAPIClient(session: HTTPSession.shared)
+    // Open Charge Map backs the live map (real bounding-box coverage).
+    // `ChargeHubStationService` stays in the codebase as a worked example of
+    // the same protocol against a different vendor's API.
     private lazy var stationService: StationService =
-        ChargeHubStationService(apiClient: apiClient, config: config)
+        OpenChargeMapStationService(apiClient: apiClient, config: config)
     private lazy var geocodingService: GeocodingService = AppleGeocodingService()
     private lazy var directionsService: RouteDirectionsService = MapKitDirectionsService()
     private lazy var paymentService: PaymentAuthService = MockPaymentAuthService()
