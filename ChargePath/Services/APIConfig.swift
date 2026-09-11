@@ -29,6 +29,16 @@ struct APIConfig {
     /// rate-limited. Supply it in `Config/Secrets.xcconfig` (git-ignored).
     let openChargeMapAPIKey: String
 
+    /// Google Maps Platform base (Geocoding / Directions REST APIs). Same
+    /// project + key as the Navigation SDK's `GOOGLE_MAPS_API_KEY` — Directions,
+    /// Geocoding and Routes are ordinary API-key-restricted REST APIs on that
+    /// project, not part of the Navigation SDK itself.
+    let googleMapsBaseURL: URL
+
+    /// Reuses `GOOGLE_MAPS_API_KEY`. Empty ⇒ `DependencyContainer` falls back
+    /// to `CLGeocoder` / `MKDirections`.
+    let googleMapsAPIKey: String
+
     let requestTimeout: TimeInterval
 
     static let `default` = APIConfig(
@@ -36,11 +46,14 @@ struct APIConfig {
         chargeHubAPIKey: Self.resolvedChargeHubKey,
         openChargeMapBaseURL: URL(string: "https://api.openchargemap.io/v3")!,
         openChargeMapAPIKey: Self.resolvedOpenChargeMapKey,
+        googleMapsBaseURL: URL(string: "https://maps.googleapis.com/maps/api")!,
+        googleMapsAPIKey: Self.resolvedGoogleMapsKey,
         requestTimeout: 20
     )
 
     var hasChargeHubCredentials: Bool { !chargeHubAPIKey.isEmpty }
     var hasOpenChargeMapCredentials: Bool { !openChargeMapAPIKey.isEmpty }
+    var hasGoogleMapsCredentials: Bool { !googleMapsAPIKey.isEmpty }
 
     /// Key resolution order:
     /// 1. `CHARGEHUB_API_KEY` in Info.plist — populated at build time from the
@@ -55,6 +68,11 @@ struct APIConfig {
     /// Same Info.plist → environment resolution as the ChargeHub key.
     private static var resolvedOpenChargeMapKey: String {
         resolvedKey(named: "OPEN_CHARGE_MAP_API_KEY")
+    }
+
+    /// Same Info.plist → environment resolution as the ChargeHub key.
+    private static var resolvedGoogleMapsKey: String {
+        resolvedKey(named: "GOOGLE_MAPS_API_KEY")
     }
 
     private static func resolvedKey(named name: String) -> String {
