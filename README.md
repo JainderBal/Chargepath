@@ -1,21 +1,33 @@
 # ChargePath
 
-A retro-styled iOS EV-charging app — find stations on a **real map**, check
-live port status, plan road trips with charging stops, and run a mocked
-activate → live-session → receipt charging flow that bills a wallet balance.
-English + French.
+A retro-styled iOS EV-charging app — find real charging stations on a map,
+check port status, plan road trips with charging stops, get **in-app
+turn-by-turn navigation**, and run a mocked activate → live-session → receipt
+charging flow that bills a wallet balance. English + French.
 
 Built as a **programmatic UIKit** app (no storyboard, no SwiftUI) with an
 **MVVM + Coordinator + Repository** architecture and constructor dependency
-injection throughout. Wired to **ChargeHub's REST API** — auth, decoding and
-the live-status merge are verified against the real service; because the free
-tier serves only a fixed sample, the running app is driven by
-identically-shaped seed data ([full detail](#data--chargehub-api)).
-38 unit tests, Dynamic Type + VoiceOver support.
+injection throughout:
+
+- **Live station data** from [Open Charge Map](https://openchargemap.org) —
+  an open, community-run global EV-charger registry (bounding-box POI queries,
+  connector / power / operator / price). A second `StationService`
+  implementation talks to **ChargeHub's REST API** as a worked example of the
+  same seam.
+- **In-app turn-by-turn navigation** via the **Google Navigation SDK for
+  iOS** — origin → charging stops → destination as waypoints, voice guidance,
+  live rerouting.
+- **Route preview** (polyline, charging-stop insertion, traffic-aware ETA) via
+  MapKit `MKDirections`.
+
+46 unit tests, Dynamic Type + VoiceOver support.
 
 | Map | Station detail | Route planner | Settings |
 |---|---|---|---|
 | ![Map](docs/screenshots/map.png) | ![Station detail](docs/screenshots/station-detail.png) | ![Route planner](docs/screenshots/route.png) | ![Settings](docs/screenshots/settings.png) |
+
+_(A `docs/screenshots/navigation.png` of the turn-by-turn screen still needs to
+be captured.)_
 
 ### The charging flow
 
@@ -31,53 +43,53 @@ the map until the session ends.
 
 ## How it works, screen by screen
 
-### 1 · Map  — `MapViewController` / `MapViewModel` / `MapCoordinator`
+### 1 · Map — `MapViewController` / `MapViewModel` / `MapCoordinator`
 
 A full-bleed **real `MKMapView`**. Charging stations are `MKAnnotation`s at
 real latitude/longitude (a gold "bolt" pin, grey when every port is offline,
 orange when selected). Floating over the map: a search field, an All /
 Bookmarked morphing toggle, and a filter button.
 
-- Panning/zooming the map → `MapViewModel.regionChanged` → (debounced 400 ms)
-  → `StationRepository.loadStations(in:)` → ChargeHub fetch.
+- Panning/zooming → `MapViewModel.regionChanged` → (debounced 400 ms) →
+  `StationRepository.loadStations(in:)` → **Open Charge Map** POI fetch for the
+  visible bounding box. Any non-empty result replaces the previous set; an
+  empty result (ocean, unmapped area) or a failure falls back to the bundled
+  seed, and a slim banner says "showing sample data".
 - `visibleStations` is `combineLatest(stations, filter, bookmarks, vehicle,
-  userLocation)` run through `StationFilter.matches(…)` — a 1:1 port of the
-  design mockup's `visible()` predicate (connector set, availability, charging
-  speed, radius, compatible-with-my-car, hide-offline, text search).
-- A "locate me" button (bottom-right) recentres on the user location from
-  the injected `LocationService`, whose `CLLocation` also feeds the distance
-  sort. This build wires in **`FixedLocationService`** — a fixed Montréal
-  position, no permission prompt — so the seeded Montréal stations always
-  fall inside the default search radius and the map is populated the instant
-  anyone clones and runs it, on any simulator or device. `SystemLocationService`
-  (real `CLLocationManager`) is in the same file, one line away in
-  `DependencyContainer`. If a fetch genuinely fails (no key / network) a slim
-  banner says "showing sample data".
-- Tapping a pin opens **Station detail** as a bottom sheet. The visible map
-  area shrinks to the band above the sheet and re-centres on the pin
-  (`MapViewController.focus(on:sheetHeight:)`), reproducing the mockup's
-  `mapBottom` / `mapPan` behaviour. Tapping a **different** pin while the
-  sheet is open re-points the same sheet at the new station.
-- While a charging session is running, an ink **"Charging · {station} · {port}"**
-  banner sits above the locate button (`MapViewModel.activeSessionBanner`,
-  driven by `ChargingSessionRepository.activeSession`); tapping it reopens the
-  live **Active session** screen.
+  userLocation)` run through `StationFilter.matches(…)` (connector set,
+  availability, charging speed, radius, compatible-with-my-car, hide-offline,
+  text search).
+- A "locate me" button recentres on the user location from the injected
+  `LocationService`, whose `CLLocation` also feeds the distance sort. This
+  build wires in **`FixedLocationService`** (a fixed Montréal position, no
+  permission prompt) so the map is populated the instant anyone clones and
+  runs it; `SystemLocationService` (real `CLLocationManager`) is in the same
+  file, one line away in `DependencyContainer`.
+- Tapping a pin opens **Station detail** as a bottom sheet; the map area
+  shrinks to the band above the sheet and re-centres on the pin
+  (`MapViewController.focus(on:sheetHeight:)`). Tapping a **different** pin
+  while the sheet is open re-points the same sheet.
+- While a charging session runs, an ink **"Charging · {station} · {port}"**
+  banner sits above the locate button and reopens the live **Active session**
+  screen on tap.
 
-### 2 · Station detail  — `StationDetailViewController` / `StationDetailViewModel`
+### 2 · Station detail — `StationDetailViewController` / `StationDetailViewModel`
 
 A `UISheetPresentationController` bottom sheet with `.medium()` / `.large()`
 detents; the map stays interactive behind the medium detent.
 
-- On appear the sheet shows a "checking live status" state, calls
-  `StationRepository.refreshLiveStatus(for:)` (ChargeHub Status endpoint),
-  then flips to "Live" and re-renders the port rows with real
-  **Available / In use / Offline** badges.
+- On appear it shows a "checking live status" state, calls
+  `StationRepository.refreshLiveStatus(for:)`, then flips to "Live" and
+  re-renders the port rows with **Available / In use / Offline** badges.
+  (Open Charge Map publishes no live per-port occupancy feed, so with OCM data
+  the badge reflects the station's operational flag; the ChargeHub service
+  refines real per-port `StatusCode`s.)
 - Connector badges highlight the one that fits the selected vehicle
   ("NACS · fits your car").
-- The star toggles a bookmark (persisted); "Start charging" opens the
-  Activate flow.
+- **Directions** starts in-app turn-by-turn straight to this station; the star
+  toggles a persisted bookmark; **Start charging** opens the Activate flow.
 
-### 3 · Activate charging  — `ActivateChargingViewController` / `ActivateChargingViewModel`
+### 3 · Activate charging — `ActivateChargingViewController` / `ActivateChargingViewModel`
 
 Full-screen flow presented over the sheet, two steps bound to `viewModel.step`:
 
@@ -91,12 +103,12 @@ Full-screen flow presented over the sheet, two steps bound to `viewModel.step`:
    - authorises the hold via the **mocked** `PaymentAuthService`;
    - creates the one app-wide `ActiveChargingSession` and starts its meter.
 
-On success the flow dismisses straight to the **Active session** screen — there
-is no third "success" step. No real payment is ever taken.
+On success the flow dismisses straight to the **Active session** screen. No
+real payment is ever taken.
 
-### 3a · Active session  — `ActiveSessionViewController` / `ActiveSessionViewModel`
+### 3a · Active session — `ActiveSessionViewController` / `ActiveSessionViewModel`
 
-A full-screen (`isModalInPresentation`) live meter, driven entirely by
+A full-screen live meter, driven entirely by
 `ChargingSessionRepository.activeSession`:
 
 - **Charging state** — pulsing gold bolt disc + `TEST MODE` badge, and four
@@ -104,57 +116,76 @@ A full-screen (`isModalInPresentation`) live meter, driven entirely by
   (`energy × rate + $1 session fee`), **Power** (the port's kW). A `Timer` in
   the repository advances a *simulated, time-compressed* meter (1 real second
   ≈ 120 charging seconds) so a session runs its course in a few seconds.
-- **Stop** — the dark "Stop charging" button calls `stopSession()`, which
-  settles the **real energy cost against the wallet** (`WalletRepository.charge`,
-  a debit row in payment history), releases the hold, clears the active
-  session, and returns a `ChargingSessionReceipt`.
+- **Stop** — settles the **real energy cost against the wallet**
+  (`WalletRepository.charge`, a debit row in payment history), releases the
+  hold, clears the active session, and returns a `ChargingSessionReceipt`.
 - **Receipt state** — Energy / Duration / Rate / **Total charged** rows and a
-  "Back to map" button. The session also **auto-stops** when it reaches a
-  plausible target top-up for that port; the repository broadcasts the receipt
-  on `finishedReceipt`, so an auto-stop lands on the same receipt screen as a
-  manual stop rather than just closing.
+  "Back to map" button. The session also **auto-stops** at a plausible target
+  top-up; the repository broadcasts the receipt on `finishedReceipt`, so an
+  auto-stop lands on the same receipt screen as a manual stop.
 
 While a session is live, **"Start charging" is disabled** on every Station
-Detail sheet (*"Finish your current session first"*) — there is only ever one
-session, enforced by `ChargingSessionError.sessionAlreadyActive`.
+Detail sheet — there is only ever one session, enforced by
+`ChargingSessionError.sessionAlreadyActive`.
 
-Screenshots (top of this file): [live session](docs/screenshots/session-live.png)
-→ [receipt](docs/screenshots/session-receipt.png) →
-[the `−$1.79` debit in the Wallet](docs/screenshots/wallet.png).
-
-### 4 · Route planner  — `RoutePlannerViewController` / `RoutePlannerViewModel` / `RouteRepository`
+### 4 · Route planner — `RoutePlannerViewController` / `RoutePlannerViewModel` / `RouteRepository`
 
 Two-stage flow (`viewModel.stage`):
 
 - **Input** — start / destination fields (geocodable defaults pre-filled),
   a vehicle-profile card whose range auto-fills from the selected vehicle,
   and a "Plan trip" button.
-- **Results** — a real `MKMapView` with the driving polyline and numbered
-  stop pins, plus a list of `RouteStopRowView`s (station, "km in · kW ·
-  arrive %", estimated minutes). Tapping a stop jumps to the Map tab and
-  opens that station.
+- **Results** — a real `MKMapView` with the driving polyline and numbered stop
+  pins, a meta line (`312 km · 4 h 12 min drive · 4 h 46 min with charging ·
+  {vehicle}` — the drive time is `MKDirections`' traffic-aware ETA), a list of
+  `RouteStopRowView`s, and a **Start navigation** button that opens the
+  in-app turn-by-turn screen for the whole trip. Tapping a stop jumps to the
+  Map tab and opens that station.
 
-Planning = geocode → `MKDirections` route → greedy charging-stop insertion.
-See **[Route planner accuracy](#route-planner--what-it-computes-and-how-accurate-it-is)** below for exactly how good the numbers are.
+Planning = geocode (`CLGeocoder`) → `MKDirections` route → greedy
+charging-stop insertion. See
+**[Route planner accuracy](#route-planner--what-it-computes-and-how-accurate-it-is)**.
 
-### 5 · Settings  — `SettingsViewController` / `SettingsViewModel` / `SettingsCoordinator`
+### 5 · Navigation — `NavigationViewController` / `NavigationViewModel`
 
-- **Vehicle profile** row → pushes **Vehicle selection** (screen 6)
-- **Language** EN / FR `MorphingToggleView` → `LocalizationRepository`
-  switches the whole app's copy live (no relaunch)
+Full-screen in-app turn-by-turn, presented from **Start navigation** (whole
+trip: charging stops then destination) or from a station's **Directions**
+button (single destination).
+
+- The map area is the **Google Navigation SDK**'s view, which renders its own
+  maneuver header + footer and drives voice guidance and rerouting. ChargePath
+  wraps a themed ETA / distance strip and an **End** button around it.
+- `NavigationViewModel` owns the ordered `[NavWaypoint]` and talks only to a
+  **`TurnByTurnNavigator`** protocol; `GoogleTurnByTurnNavigator` is the
+  concrete implementation, compiled only when the SDK is linked
+  (`#if canImport(GoogleNavigation)`). Without the SDK — or without a
+  `GOOGLE_MAPS_API_KEY` — the screen shows a themed placeholder and the rest
+  of the app is unaffected.
+- Google's terms-of-service dialog is shown once (the SDK refuses to start
+  guidance until it's accepted); the SDK uses a real location fix, hence the
+  `NSLocation*UsageDescription` keys and the `location` / `audio` background
+  modes in `Info.plist`.
+
+See **[Navigation setup & billing](#navigation--google-navigation-sdk)**.
+
+### 6 · Settings — `SettingsViewController` / `SettingsViewModel` / `SettingsCoordinator`
+
+- **Vehicle profile** row → pushes **Vehicle selection**
+- **Language** EN / FR `MorphingToggleView` → `LocalizationRepository` switches
+  the whole app's copy live (no relaunch)
 - **Wallet** row (shows the balance) → pushes the Wallet screen
 - **App info** — version · Test Mode
 - **Bookmarked stations** list — tapping one jumps to the Map tab and opens it
 
 **Wallet:** dark balance card, top-up chips ($10 / $25 / $50), "Add $N ·
-Test Mode" (mock sandbox top-up, appends a credit to history), payment
-history. State persisted via `WalletRepository`.
+Test Mode" (mock sandbox top-up), payment history. Persisted via
+`WalletRepository`.
 
-### 6 · Vehicle selection  — `VehicleSelectionViewController` / `VehicleSelectionViewModel`
+### 7 · Vehicle selection — `VehicleSelectionViewController` / `VehicleSelectionViewModel`
 
-Connector-compatible vehicle picker (gold = selected, with a filled radio
-dot) plus "or pick a connector" chips. Reached from both Settings and the
-Route Planner; writes through `VehicleRepository` (persisted).
+Connector-compatible vehicle picker plus "or pick a connector" chips. Reached
+from both Settings and the Route Planner; writes through `VehicleRepository`
+(persisted).
 
 ---
 
@@ -163,28 +194,28 @@ Route Planner; writes through `VehicleRepository` (persisted).
 ### Layers
 
 ```
-App/              AppDelegate, SceneDelegate, DependencyContainer (composition root)
+App/              AppDelegate (provides the Google Maps API key), SceneDelegate,
+                  DependencyContainer (composition root)
 Models/           pure value types — Station, ChargingPort, Vehicle, StationFilter,
-                  RoutePlan, Wallet, ActiveChargingSession, ChargingSessionReceipt
-Services/         the outside world — ChargeHub REST API (Alamofire), CLGeocoder,
-                  MKDirections, location (fixed Montréal by default, real
-                  CLLocationManager swappable), UserDefaults wrapper, mocked
-                  payment authorization, the one shared Alamofire Session,
-                  offline seed data
-Repositories/     the domain API the ViewModels consume — combine services,
-                  cache, fall back to seed data, expose state as Rx Observables
-ViewModels/       one per screen — BehaviorRelay outputs, `on…` closure hooks
-                  for navigation; never construct their own dependencies
+                  RoutePlan, NavWaypoint, Wallet, ActiveChargingSession, …
+Services/         the outside world — Open Charge Map + ChargeHub REST (Alamofire),
+                  CLGeocoder, MKDirections, TurnByTurnNavigator (Google Navigation
+                  SDK behind the seam), location, UserDefaults wrapper, mocked
+                  payment auth, the one shared Alamofire Session, offline seed data
+Repositories/     the domain API the ViewModels consume — combine services, cache,
+                  fall back to seed data, expose state as Rx Observables
+ViewModels/       one per screen — BehaviorRelay outputs, `on…` closure hooks for
+                  navigation; never construct their own dependencies; no UIKit /
+                  vendor-SDK imports
 ViewControllers/  programmatic UIKit; every value arrives through an Rx binding
 Coordinators/     AppCoordinator + one per tab; build each screen from the
                   container and own all navigation
 Theme/            AppColor / AppFont / AppMetrics / Strings (EN + FR)
 Views/            reusable design-system components
-Resources/        Assets.xcassets + chargehub-*-sample.json (seed data in the
-                  real ChargeHub JSON shape, decoded via the same DTOs)
-Config/           Base.xcconfig + Secrets.xcconfig (API key — see below)
+Resources/        Assets.xcassets + seed station JSON (offline fallback)
+Config/           Base.xcconfig + Secrets.xcconfig (API keys — see below)
 
-ChargePathTests/  38 XCTest cases + in-memory protocol doubles
+ChargePathTests/  46 XCTest cases + in-memory protocol doubles
 ```
 
 ### Dependency injection
@@ -200,23 +231,17 @@ composition root:
    shared repositories.
 
 Coordinators call the container when they navigate; ViewControllers receive a
-ready-made ViewModel and construct nothing.
-
-```swift
-final class MapViewModel {
-    private let stationRepository: StationRepository
-    private let bookmarkRepository: BookmarkRepository
-    // …
-    init(stationRepository: StationRepository,
-         bookmarkRepository: BookmarkRepository, …) { … }   // everything injected
-}
-```
+ready-made ViewModel and construct nothing. The one pragmatic exception is the
+Navigation screen: `GMSMapView` and its `navigator` are inseparable, so
+`NavigationViewController` creates the map view (via `NavigationEngine.make()`)
+and hands the resulting `TurnByTurnNavigator` to its ViewModel through
+`bind(navigator:)`.
 
 ### Singletons
 
-Exactly one: **`HTTPSession.shared`** — a single configured Alamofire
-`Session` (one connection pool / `URLCache` per process, no meaningful
-alternative). Services, Repositories and ViewModels are always injected
+Exactly one app-owned singleton: **`HTTPSession.shared`** — a single configured
+Alamofire `Session`. (`GMSServices` is a vendor singleton initialised once in
+`AppDelegate`.) Services, Repositories and ViewModels are always injected
 instances so they stay swappable and testable.
 
 ### Data flow (Map)
@@ -224,8 +249,8 @@ instances so they stay swappable and testable.
 ```
 MKMapView pan ─▶ MapViewModel.regionChanged ─(debounce 400ms)▶ StationRepository
                                                                      │
-                            ChargeHubStationService ◀────────────────┘
-                                     │ Alamofire → DTO → domain Station
+                        OpenChargeMapStationService ◀────────────────┘
+                                     │ Alamofire → OCM DTO → domain Station
                                      ▼
               BehaviorRelay<[Station]>  ──combineLatest(filter, bookmarks,
                                           vehicle, userLocation)──▶  visibleStations
@@ -239,157 +264,99 @@ subscriptions** — no `reloadData()` / text-setting outside a binding.
 
 ---
 
-## Design
+## Data — Open Charge Map
 
-A deliberately retro, single-look design system (it does **not** invert for
-Dark Mode — the cream/ink identity is the point). Tokens live in `Theme/`.
+Live station data comes from Open Charge Map (`Services/OpenChargeMapEndpoint`,
+`OpenChargeMapDTO`, `OpenChargeMapStationService`).
 
-### Palette (`AppColor`)
+### Add your key
 
-| Token | Hex | Role |
-|---|---|---|
-| Cream | `#FFF6E3` | primary surface |
-| Ink | `#3B1F17` | text, 2 pt borders, hard shadow |
-| Gold | `#F5B335` | selected / primary accent |
-| Orange | `#E5622D` | call-to-action buttons |
-| Rust | `#C4452C` | tags, gradient base |
-| Sky | `#3E86D6` | route / info |
-| Available | `#2F7A55` | live "available" status |
-| Sand | `#EFE0BE` | inset tracks, muted fills |
-
-### Type (`AppFont`)
-
-The mockup uses *Bagel Fat One* (rounded display) + *Zilla Slab* (slab
-titles) + system body. Font files aren't bundled, so these are approximated
-with the system **rounded** and **serif** faces — swap real `UIFont`s into
-`AppFont` to match exactly.
-
-### Motifs (`Views/`)
-
-- **Diagonal tricolor stripe** behind Route Planner & Settings
-  (`StripeBackgroundView`), tilted ±18°
-- **Hard offset shadow** (no blur) on every raised surface (`applyHardShadow`)
-- **Ink outline** ~2 pt on nearly everything; pill radii are clamped in
-  `layoutSubviews` (`roundCornersAsPill`) and small filled tiles clip to
-  their radius (`applyInkOutline(clip:)`)
-- **Morphing toggle** — an ink pill slides behind the selected label with a
-  spring (`MorphingToggleView`)
-- **Bottom sheets**, not full-page pushes, for Station Detail & Filters
-- 8-pt spacing grid, 44 pt minimum tap target (`AppMetrics`)
-
-### Localization
-
-Full EN + FR copy is a 1:1 port of the mockup, held in `Theme/Strings.swift`
-(not `.strings` files) so the Settings toggle switches the whole app live.
-
-### Accessibility
-
-Every face in `AppFont` is scaled with `UIFontMetrics` and labels opt into
-`adjustsFontForContentSizeCategory`, so the UI respects Dynamic Type.
-Icon-only controls (filter, locate, bookmark, close) and the map pins carry
-`accessibilityLabel` / `accessibilityValue` for VoiceOver.
-
----
-
-## Data — ChargeHub API
-
-Station locations and live port status are wired to ChargeHub's REST API
-(`Services/ChargeHubEndpoint`, `ChargeHubDTO`, `ChargeHubStationService`).
-This section is deliberately blunt about what is real, what is a fixed sample,
-and what was reverse-engineered — because the honest version matters more than
-a "uses a live API" line.
-
-### Add your API key
-
-1. Get a key: <https://developer.chargehub.com> → subscribe to the free demo
-   product (**Demo - POI**) → your **Profile** → copy the **Primary key**.
-2. Create your local secrets file (git-ignored — never committed or pushed):
+1. Sign in at <https://openchargemap.org> → **My Profile** → **My Apps** →
+   register an app → copy the **API key**. (OCM also serves keyless traffic,
+   just heavily rate-limited.)
+2. Create your local secrets file (git-ignored):
    ```sh
    cp Config/Secrets.example.xcconfig Config/Secrets.xcconfig
    ```
-3. Paste the key in — no quotes:
+3. Fill it in — no quotes:
    ```
-   CHARGEHUB_API_KEY = your_primary_key
+   OPEN_CHARGE_MAP_API_KEY = your_key
    ```
 4. Rebuild.
 
-`Config/Base.xcconfig` (attached to the target) `#include?`s that file and
-surfaces the value into `Info.plist`; `APIConfig` reads it there, and also
-accepts a `CHARGEHUB_API_KEY` environment variable as a fallback. With **no**
-key the app runs entirely on seed data (below).
+`Config/Base.xcconfig` `#include?`s that file and surfaces the values into
+`Info.plist`; `APIConfig` reads them there, with a same-named environment
+variable as a fallback. With **no** key the app still calls OCM (rate-limited)
+and falls back to the seed on failure.
 
-### The two calls
+### The call
 
-| Call | Request | Response |
-|---|---|---|
-| Stations | `GET https://apiv3.chargehub.com/demo/locations` | bare JSON array — `LocID, LocName, Latitude, Longitude, Ports[{PortID, Level, KW, ChargingCostDisplay, Connectors}]` |
-| Live status | `GET …/demo/status?locId={id}` | array of `{LocID, PortID, StatusCode, StatusTime}` |
+`GET https://api.openchargemap.io/v3/poi?output=json&verbose=false&maxresults=200&boundingbox=(minLat,minLon),(maxLat,maxLon)`
+— the bounding box is derived from the visible `MKCoordinateRegion`; auth is
+the `key` query param (also sent as the `X-API-Key` header). The response is a
+bare JSON array; `OCMPoiDTO.toDomain()` maps `AddressInfo` → name/coords,
+`Connections[]` → `ChargingPort`s (connector title via `Connector(apiValue:)`,
+`PowerKW`, operational flag → `PortStatus`), and `UsageCost` → the price
+string. Decoding is lenient — OCM is community-edited, so every field is
+optional. Connector titles OCM uses but the `Connector` enum has no case for
+(`Type 2`, `CHAdeMO`) map to `.unknown`.
 
-Auth is the `Ocp-Apim-Subscription-Key` header (ChargeHub sits behind Azure
-API Management). `StatusCode` maps to `PortStatus` (**1 = available,
-2 = in use, 3 = offline**) and drives the coloured port badges on the Station
-Detail sheet. The response DTOs decode leniently — every field optional, and
-`Connectors` is accepted as either `["A","B"]` or `[["A","B"]]`.
+### ChargeHub (second worked example)
 
-### What's verified vs. what's assumed
+`ChargeHubStationService` implements the same `StationService` protocol against
+ChargeHub's REST API (`Ocp-Apim-Subscription-Key` header auth,
+`/demo/locations` + `/demo/status`, `StatusCode` → `PortStatus` merge). It is
+kept as a demonstration of the seam; ChargeHub's free **Demo - POI** tier
+returns a single fixed POI regardless of location, which is why it isn't the
+default `stationService` in `DependencyContainer`. Set `CHARGEHUB_API_KEY` in
+`Secrets.xcconfig` if you want to exercise it.
 
-**Verified** — with a real key I confirmed, via `curl` and the app's `OSLog`
-(subsystem `com.chargepath.app`, category `StationRepository`):
+### Offline seed
 
-- `GET /demo/locations` → **HTTP 200**, header auth accepted, body decodes
-  through `[ChargeHubStationDTO]` → `Station` — logs *"ChargeHub returned N
-  stations"*.
-- `GET /demo/status` → **HTTP 200**, decodes through `ChargeHubStatusResponse`,
-  merges onto the open station — logs *"ChargeHub status: N port record(s)"*.
-
-So the transport, header auth, JSON decoding, `StatusCode` merge and the
-seed-fallback logic are all exercised against the live service.
-
-**Assumed / reverse-engineered** — I did not have a full published spec:
-
-- Endpoint paths and the `status` query shape came from the portal's operation
-  screenshots + probing, not a spec document. `ChargeHubEndpoint` carries a
-  code comment saying as much ("path is a best guess — confirm against the
-  portal's Status operation").
-- The exact JSON keys were inferred from sample responses; that's *why* the
-  DTOs are defensive about missing/renamed fields.
-
-### What the demo key actually returns
-
-ChargeHub documents **Demo - POI** as a *sample* product (the paid **Trial -
-POI** tier is the one described as giving real coverage and bounding-box
-queries). What I observed by calling it:
-
-- **Every** `GET /demo/locations` returns the **same single station** — one
-  site in Temecula, CA, ~2021 data — regardless of any location parameter.
-- `GET /demo/status` returns **one fixed, unrelated** port record.
-- Rate limit ~5 req/min, 100/week; the `networks` operation returns 401 on
-  this product.
-
-I did **not** find a doc sentence stating "you get exactly one station" — it's
-the empirical behaviour of the sample dataset. Either way, the app can't
-build a map on it.
-
-### So the app runs on ChargeHub-shaped seed data
-
-`StationRepository` fires the live call on every map pan, logs that it
-round-tripped, then — because the demo result has fewer stations than the
-bundled set — **keeps the seed set**. The seed set is also the fallback with
-no key and with no network, so the app is **fully functional offline**.
-
-The seed is **not** hand-built domain objects — it's
 `Resources/chargehub-locations-sample.json` + `chargehub-status-sample.json`
-in the **exact JSON shape** ChargeHub returns (real Montréal coordinates),
-decoded through the **same `ChargeHubStationDTO` / `ChargeHubStatusResponse`
-pipeline** as live data, `StatusCode` merge included. Map, Station Detail and
-Route Planner were all verified end-to-end against that ChargeHub-shaped JSON.
+(real Montréal coordinates) are the fallback with no network / an empty OCM
+result. `StationSeed` decodes them through the ChargeHub DTO pipeline, so the
+Map / Station Detail / Route flows all work fully offline.
 
-**Bottom line:** the integration layer (auth, request building, decoding,
-status merge, graceful fallback) is real and tested against the live service;
-the *live dataset* is a fixed sample by ChargeHub's design, so the running app
-is driven by identically-shaped seed data. Moving to real nationwide data is a
-base-URL swap to the paid tier plus adding the bounding-box params in
-`ChargeHubEndpoint` — no other code changes.
+---
+
+## Navigation — Google Navigation SDK
+
+`NavigationViewModel` drives a `TurnByTurnNavigator`; `GoogleTurnByTurnNavigator`
+(in `Services/GoogleTurnByTurnNavigator.swift`, guarded by
+`#if canImport(GoogleNavigation)`) wraps `GMSMapView` + `GMSNavigator`. The
+route waypoints are the planned **charging stops followed by the destination**
+(or a single station); the drive always starts from the live GPS fix.
+
+### Add your key
+
+1. In the [Google Cloud console](https://console.cloud.google.com): create a
+   project, **enable billing**, and enable both **Navigation SDK for iOS** and
+   **Maps SDK for iOS**. Create an **API key**.
+2. Put it in `Config/Secrets.xcconfig`:
+   ```
+   GOOGLE_MAPS_API_KEY = your_key
+   ```
+3. The SPM package (`https://github.com/googlemaps/ios-navigation-sdk`, pinned
+   to `11.1.0`) is already in the project; SPM resolves it on first build.
+4. Rebuild. `AppDelegate` calls `GMSServices.provideAPIKey(_:)` at launch when
+   the key is present. Empty key ⇒ the Navigation screen shows a placeholder.
+
+### Billing
+
+The Navigation SDK is a **paid** Google Maps Platform product. Free tier is
+≈ **1,000 destination requests / month**; each `setDestinations(...)` (i.e.
+each time you start navigating a route) is one destination request. Starting
+guidance and rerouting on an already-fetched destination are **not** extra
+charges. Watch usage in the Cloud console → *Maps Platform → Metrics /
+Billing*. The SDK binary also adds ~100 MB to the build before stripping.
+
+### Notes
+
+- Some Cloud projects must **request Navigation SDK access** before the key
+  works, even with billing on — a `403` at `setDestinations` is the tell.
+- Simulator guidance needs a moving location: Xcode **Features ▸ Location ▸
+  Freeway Drive**, or a GPX file.
 
 ---
 
@@ -398,7 +365,8 @@ base-URL swap to the paid tier plus adding the bounding-box params in
 `RouteRepository.planTrip(_:)`:
 
 1. **Geocode** origin + destination (`CLGeocoder`)
-2. **Driving route** between them (`MKDirections`) → real polyline + distance
+2. **Driving route** between them (`MKDirections`) → real polyline, distance,
+   and **traffic-aware ETA** (`MKRoute.expectedTravelTime`)
 3. **Insert charging stops** greedily: usable range per leg is
    `(SoC − 15 % reserve) × vehicleRange`; start at 100 %, assume a recharge to
    90 % at each stop; drop a stop at ~90 % of each leg budget and pick the
@@ -408,15 +376,16 @@ base-URL swap to the paid tier plus adding the bounding-box params in
 
 | Part | Accuracy |
 |---|---|
-| Route line + total distance | **Accurate** — real `MKDirections` output |
+| Route line, distance, drive-time ETA | **Accurate** — real `MKDirections` output, ETA factors current traffic |
 | Where stops land | **Rough** — flat efficiency, no elevation / weather / speed / HVAC; assumes exactly 100 → 90 % cycles |
-| Which station is chosen | **Limited** — candidate pool is only the seed stations (+ region cache), not a corridor-wide charger DB. A paid data tier fixes this. |
-| Arrival SoC % | Ballpark — consistent with the model, but the model is linear (no regen, no climate load) |
-| Charge minutes | **Under-estimate** — ignores the charging curve (real DC slows sharply above ~70 %); order-of-magnitude only |
+| Which station is chosen | **Limited** — candidate pool is the OCM region cache + seed, not a corridor-wide charger DB |
+| Arrival SoC % | Ballpark — linear model (no regen, no climate load) |
+| Charge minutes | **Under-estimate** — ignores the charging curve |
 | Offline fallback (`demoPlan`) | Fixed illustrative numbers — used when geocoding / directions fail or exceed the 15 s timeout |
 
-It's a genuine greedy planner that demonstrates the feature; it is **not**
-trip-planning-grade and isn't meant to be.
+The **actual guided drive** is handed to the Google Navigation SDK, which does
+its own routing and live traffic; the greedy planner above is the preview and
+the charging-stop picker feeding it waypoints.
 
 ---
 
@@ -426,12 +395,11 @@ The pre-auth hold is **mocked** (`MockPaymentAuthService`) and Wallet top-ups
 are simulated sandbox credits — no real payment is ever taken. The charging
 *meter* is a time-compressed simulation, not a real OCPP session. What **is**
 real: the wallet is genuinely debited for `energy × rate + session fee` when a
-session stops, and the balance is checked before a session can start. The
-"App info" row and several badges say *Test Mode* so this is never ambiguous.
+session stops, and the balance is checked before a session can start.
 
 ## Tests
 
-`ChargePathTests` — **38 XCTest cases**, all passing, built on the injected
+`ChargePathTests` — **46 XCTest cases**, all passing, built on the injected
 protocols (in-memory doubles in `ChargePathTests/Doubles.swift`):
 
 ```sh
@@ -441,57 +409,50 @@ xcodebuild test -project ChargePath.xcodeproj -scheme ChargePath \
 
 | Suite | Covers |
 |---|---|
-| `StationFilterTests` | every rule of `StationFilter.matches` (segment, connectors, availability, power, radius, compatible-only, query) |
-| `ConnectorTests` | lenient plug parsing (`"J1772 Combo"` → CCS, `"Tesla"` → NACS), `StatusCode` → `PortStatus` |
-| `ChargeHubDTOTests` | decoding the real ChargeHub `/demo/locations` + `/demo/status` JSON → domain, and the bundled seed JSON |
-| `MapViewModelTests` | the `combineLatest` visible-stations pipeline, segment/query filtering, `onAppear`/`locateTapped` → `LocationService` |
-| `StationDetailViewModelTests` | live-status merge → `.live`, `present(_:)` re-point, bookmark write-through, "start" disabled while a session runs |
-| `RouteRepositoryTests` | real-plan stop insertion never below the 15 % reserve; geocode-failure → `isEstimate` fallback |
-| `WalletTests` | `addFunds` balance + history, amount formatting, non-positive guard |
-| `WalletChargeTests` | `charge(_:title:subtitle:)` debits the balance + prepends a debit row; non-positive guard |
-| `ChargingSessionRepositoryTests` | insufficient funds → `.insufficientFunds`; start publishes the session; stop settles the wallet and clears it; stop with no session → `.noActiveSession`; `parseRate` from the price string; a stop broadcasts the receipt on `finishedReceipt` (so an auto-stop shows it too) |
+| `StationFilterTests` | every rule of `StationFilter.matches` |
+| `ConnectorTests` | lenient plug parsing, `StatusCode` → `PortStatus` |
+| `OpenChargeMapDTOTests` | OCM `/v3/poi` JSON → domain (connectors, power, price, operational flag, rows without coords dropped) |
+| `ChargeHubDTOTests` | ChargeHub `/demo/*` JSON → domain, and the bundled seed JSON |
+| `MapViewModelTests` | the `combineLatest` visible-stations pipeline, segment/query filtering, location hooks |
+| `StationDetailViewModelTests` | live-status merge, `present(_:)` re-point, bookmark write-through, "start" disabled during a session |
+| `RouteRepositoryTests` | real-plan stop insertion never below the 15 % reserve; drive-time carried through; geocode-failure → `isEstimate` fallback |
+| `NavigationViewModelTests` | waypoint order (stops → destination), guidance start/stop, nav updates → ETA/distance text, arrival, unavailable-navigator placeholder |
+| `WalletTests` / `WalletChargeTests` | balance + history, amount formatting, non-positive guards |
+| `ChargingSessionRepositoryTests` | funds check, start/stop settlement, receipt broadcast |
 
 ---
 
 ## Build & run
 
-**Requirements:** Xcode 26 / iOS 26.5 SDK, deployment target **iOS 17.0**.
-SPM resolves dependencies on first open.
+**Requirements:** Xcode 26 / iOS 26.5 SDK, deployment target **iOS 17.0**
+(the Navigation SDK needs iOS 16+). SPM resolves dependencies on first open.
 
 **In Xcode:** `open ChargePath.xcodeproj`, pick a simulator, ⌘R.
 
 **From the command line (simulator):**
 
 ```sh
-# 1. build for the simulator
 xcodebuild -project ChargePath.xcodeproj -scheme ChargePath \
   -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
 
-# 2. boot a simulator and open the Simulator app
-xcrun simctl list devices available | grep iPhone   # see what's installed
-xcrun simctl boot "iPhone 17 Pro"
-open -a Simulator
-
-# 3. install + launch the build
+xcrun simctl boot "iPhone 17 Pro"; open -a Simulator
 APP=$(find ~/Library/Developer/Xcode/DerivedData \
   -path '*Debug-iphonesimulator/ChargePath.app' -maxdepth 6 -type d | head -1)
 xcrun simctl install "iPhone 17 Pro" "$APP"
 xcrun simctl launch "iPhone 17 Pro" Jainder.ChargePath
 
-# watch the ChargeHub calls
+# watch the station-fetch log
 xcrun simctl spawn "iPhone 17 Pro" log stream --level info \
   --predicate 'subsystem == "com.chargepath.app"'
 ```
-
-Running on a **physical iPhone** additionally needs Xcode + your Apple ID for
-code signing.
 
 ### Dependencies (SPM)
 
 | Package | Version | Use |
 |---|---|---|
 | Alamofire | 5.12 | networking (`APIClient` over the shared `Session`) |
-| RxSwift / RxCocoa | 6.10 | ViewModel ↔ UI binding (`BehaviorRelay` + `.bind(to:)`) |
+| RxSwift / RxCocoa | 6.10 | ViewModel ↔ UI binding |
+| GoogleNavigation (+ GoogleMaps) | 11.1.0 | in-app turn-by-turn navigation |
 
 `Package.resolved` is committed to pin exact versions.
 
@@ -499,13 +460,15 @@ code signing.
 
 ## Known limitations / what a v2 would add
 
-- **Real charger corridor data** for route planning (paid ChargeHub tier) and
-  a charge-curve model instead of the linear consumption estimate.
+- **`Connector` cases for Type 2 / CHAdeMO** — OCM reports them but the enum
+  currently folds them into `.unknown` (adding cases ripples into `Strings` +
+  the filter UI).
+- **Corridor-wide charger data** for route planning instead of the region
+  cache + seed, and a charge-curve model instead of the linear estimate.
 - **Custom fonts** — bundle *Bagel Fat One* / *Zilla Slab* instead of the
   system rounded/serif approximation.
 - **Persistence** is `UserDefaults` via `KeyValueStore`; a real build would
   move the wallet/bookmarks to something sturdier.
-- **A real charging session** — OCPP/OCPI start-stop against the charger, an
-  Apple Pay / PSP pre-auth in place of `MockPaymentAuthService`, and a real
-  meter feed instead of the time-compressed simulation.
-- **UI / snapshot tests** — the current 38 tests are logic/ViewModel only.
+- **A real charging session** — OCPP/OCPI start-stop, an Apple Pay / PSP
+  pre-auth in place of `MockPaymentAuthService`, a real meter feed.
+- **UI / snapshot tests** — the current suite is logic/ViewModel only.
