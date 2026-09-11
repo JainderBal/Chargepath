@@ -21,15 +21,26 @@ struct APIConfig {
     /// hitting the network.
     let chargeHubAPIKey: String
 
+    /// Open Charge Map REST base. Community-run, openly licensed, global
+    /// coverage — this is the source the live map actually uses.
+    let openChargeMapBaseURL: URL
+
+    /// Open Charge Map API key. Optional: OCM serves keyless traffic, just
+    /// rate-limited. Supply it in `Config/Secrets.xcconfig` (git-ignored).
+    let openChargeMapAPIKey: String
+
     let requestTimeout: TimeInterval
 
     static let `default` = APIConfig(
         chargeHubBaseURL: URL(string: "https://apiv3.chargehub.com/demo")!,
         chargeHubAPIKey: Self.resolvedChargeHubKey,
+        openChargeMapBaseURL: URL(string: "https://api.openchargemap.io/v3")!,
+        openChargeMapAPIKey: Self.resolvedOpenChargeMapKey,
         requestTimeout: 20
     )
 
     var hasChargeHubCredentials: Bool { !chargeHubAPIKey.isEmpty }
+    var hasOpenChargeMapCredentials: Bool { !openChargeMapAPIKey.isEmpty }
 
     /// Key resolution order:
     /// 1. `CHARGEHUB_API_KEY` in Info.plist — populated at build time from the
@@ -38,8 +49,17 @@ struct APIConfig {
     /// 2. a `CHARGEHUB_API_KEY` environment variable (e.g. an Xcode scheme var
     ///    or `xcrun simctl launch --env`).
     private static var resolvedChargeHubKey: String {
-        let fromPlist = Bundle.main.object(forInfoDictionaryKey: "CHARGEHUB_API_KEY") as? String ?? ""
-        let fromEnv = ProcessInfo.processInfo.environment["CHARGEHUB_API_KEY"] ?? ""
+        resolvedKey(named: "CHARGEHUB_API_KEY")
+    }
+
+    /// Same Info.plist → environment resolution as the ChargeHub key.
+    private static var resolvedOpenChargeMapKey: String {
+        resolvedKey(named: "OPEN_CHARGE_MAP_API_KEY")
+    }
+
+    private static func resolvedKey(named name: String) -> String {
+        let fromPlist = Bundle.main.object(forInfoDictionaryKey: name) as? String ?? ""
+        let fromEnv = ProcessInfo.processInfo.environment[name] ?? ""
         let key = fromPlist.isEmpty ? fromEnv : fromPlist
         return key.trimmingCharacters(in: .whitespacesAndNewlines)
     }
