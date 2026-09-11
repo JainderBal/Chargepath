@@ -120,10 +120,15 @@ final class GoogleTurnByTurnNavigator: NSObject, TurnByTurnNavigator {
     var updates: Observable<NavUpdate> { updatesRelay.asObservable() }
     var didArrive: Observable<Void> { arriveRelay.asObservable() }
 
+    /// Retries this many times when the SDK reports `.locationUnavailable` —
+    /// on a freshly-opened screen the app can be a step ahead of the SDK's
+    /// own location provider getting its first GPS fix, even once permission
+    /// is granted. A short backoff nearly always clears it; anything else
+    /// fails immediately.
+    private static let locationRetryDelays: [TimeInterval] = [1, 2, 3]
+
     func setDestinations(_ waypoints: [NavWaypoint]) -> Single<Void> {
         Single.create { [mapView] observer in
-            navLog.info("setDestinations: \(waypoints.count) waypoint(s), location auth = \(CLLocationManager().authorizationStatus.rawValue)")
-
             guard let navigator = mapView.navigator else {
                 navLog.error("setDestinations: mapView.navigator is nil (SDK not enabled)")
                 observer(.failure(TurnByTurnError.unavailable))
@@ -137,16 +142,39 @@ final class GoogleTurnByTurnNavigator: NSObject, TurnByTurnNavigator {
                 observer(.failure(TurnByTurnError.routeFailed(reason: "invalidWaypoint")))
                 return Disposables.create()
             }
-            navigator.setDestinations(gms) { routeStatus in
-                if routeStatus == .OK {
-                    observer(.success(()))
-                } else {
-                    let reason = String(describing: routeStatus)
-                    navLog.error("setDestinations failed: \(reason, privacy: .public)")
-                    observer(.failure(TurnByTurnError.routeFailed(reason: reason)))
+            var cancelled = false
+            Self.attempt(navigator: navigator, waypoints: gms, remainingDelays: Self.locationRetryDelays) { result in
+                guard !cancelled else { return }
+                switch result {
+                case .success: observer(.success(()))
+                case .failure(let error): observer(.failure(error))
                 }
             }
-            return Disposables.create()
+            return Disposables.create { cancelled = true }
+        }
+    }
+
+    private static func attempt(navigator: GMSNavigator,
+                                waypoints: [GMSNavigationWaypoint],
+                                remainingDelays: [TimeInterval],
+                                completion: @escaping (Result<Void, Error>) -> Void) {
+        navLog.info("setDestinations: \(waypoints.count) waypoint(s), location auth = \(CLLocationManager().authorizationStatus.rawValue)")
+        navigator.setDestinations(waypoints) { routeStatus in
+            if routeStatus == .OK {
+                completion(.success(()))
+                return
+            }
+            let reason = String(describing: routeStatus)
+            if routeStatus == .locationUnavailable, let delay = remainingDelays.first {
+                navLog.info("setDestinations: locationUnavailable, retrying in \(delay, privacy: .public)s (\(remainingDelays.count) attempt(s) left)")
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    attempt(navigator: navigator, waypoints: waypoints,
+                           remainingDelays: Array(remainingDelays.dropFirst()), completion: completion)
+                }
+                return
+            }
+            navLog.error("setDestinations failed: \(reason, privacy: .public)")
+            completion(.failure(TurnByTurnError.routeFailed(reason: reason)))
         }
     }
 
