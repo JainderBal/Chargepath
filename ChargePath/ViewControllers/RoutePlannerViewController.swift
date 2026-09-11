@@ -4,12 +4,12 @@
 //
 //  The Route tab — a two-stage flow bound to RoutePlannerViewModel.stage:
 //    .input   → trip form (start / destination / vehicle range)
-//    .results → a real MKMapView with the driving polyline + numbered
-//               charging stops, and a list of those stops below.
+//    .results → a RoutePreviewMap (Google Maps when keyed, MapKit fallback)
+//               with the driving polyline + numbered charging stops, and a
+//               list of those stops below.
 //
 
 import UIKit
-import MapKit
 import RxSwift
 import RxRelay
 import RxCocoa
@@ -32,7 +32,7 @@ final class RoutePlannerViewController: UIViewController {
 
     // Results stage
     private let resultsContainer = UIStackView(axis: .vertical, spacing: AppMetrics.space4)
-    private let resultsMap = MKMapView()
+    private lazy var previewMap: RoutePreviewMap = RoutePreviewMapFactory.make()
     private let routeTitleLabel = UILabel(font: AppFont.slab(22, weight: .bold))
     private let routeMetaLabel = UILabel(font: AppFont.body(13), color: AppColor.stone)
     private let estimateNote = UILabel(
@@ -153,11 +153,10 @@ final class RoutePlannerViewController: UIViewController {
         backButton.heightAnchor.constraint(equalToConstant: AppMetrics.minTapTarget).isActive = true
         backButton.addTarget(self, action: #selector(backToInput), for: .touchUpInside)
 
-        resultsMap.isUserInteractionEnabled = true
-        resultsMap.delegate = self
-        resultsMap.applyInkOutline(cornerRadius: AppMetrics.radiusCard)
-        resultsMap.layer.masksToBounds = true
-        resultsMap.heightAnchor.constraint(equalToConstant: 220).isActive = true
+        let mapView = previewMap.view
+        mapView.applyInkOutline(cornerRadius: AppMetrics.radiusCard)
+        mapView.layer.masksToBounds = true
+        mapView.heightAnchor.constraint(equalToConstant: 220).isActive = true
 
         backButton.accessibilityLabel = "Back to trip input"
 
@@ -172,7 +171,7 @@ final class RoutePlannerViewController: UIViewController {
 
         navButton.onTap = { [weak viewModel] in viewModel?.startNavigation() }
 
-        [backButton, resultsMap, titleRow, estimateNote, navButton, stopsStack]
+        [backButton, mapView, titleRow, estimateNote, navButton, stopsStack]
             .forEach { resultsContainer.addArrangedSubview($0) }
         resultsContainer.setCustomSpacing(AppMetrics.space3, after: backButton)
     }
@@ -233,21 +232,7 @@ final class RoutePlannerViewController: UIViewController {
 
     private func renderPlan(_ plan: RoutePlan) {
         estimateNote.isHidden = !plan.isEstimate
-
-        // Map: polyline + numbered stop pins.
-        resultsMap.removeOverlays(resultsMap.overlays)
-        resultsMap.removeAnnotations(resultsMap.annotations)
-
-        if plan.routeCoordinates.count > 1 {
-            let polyline = MKPolyline(coordinates: plan.routeCoordinates, count: plan.routeCoordinates.count)
-            resultsMap.addOverlay(polyline)
-            resultsMap.setVisibleMapRect(
-                polyline.boundingMapRect,
-                edgePadding: UIEdgeInsets(top: 32, left: 32, bottom: 32, right: 32),
-                animated: false
-            )
-        }
-        resultsMap.addAnnotations(plan.stops.map { StopAnnotation(stop: $0) })
+        previewMap.render(plan)
 
         // List.
         stopsStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
@@ -262,48 +247,4 @@ final class RoutePlannerViewController: UIViewController {
 
     @objc private func editVehicle() { viewModel.editVehicle() }
     @objc private func backToInput() { viewModel.backToInput() }
-}
-
-// MARK: - MKMapViewDelegate
-
-extension RoutePlannerViewController: MKMapViewDelegate {
-    func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
-        guard let polyline = overlay as? MKPolyline else { return MKOverlayRenderer(overlay: overlay) }
-        let renderer = MKPolylineRenderer(polyline: polyline)
-        renderer.strokeColor = AppColor.orange
-        renderer.lineWidth = 5
-        renderer.lineCap = .round
-        return renderer
-    }
-
-    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-        guard let stop = annotation as? StopAnnotation else { return nil }
-        let id = "stop"
-        let view = mapView.dequeueReusableAnnotationView(withIdentifier: id)
-            ?? MKAnnotationView(annotation: annotation, reuseIdentifier: id)
-        view.annotation = annotation
-        let badge = UILabel(text: "\(stop.stop.index)", font: AppFont.slab(13, weight: .bold),
-                            color: AppColor.ink, alignment: .center)
-        badge.frame = CGRect(x: 0, y: 0, width: 26, height: 26)
-        badge.backgroundColor = AppColor.gold
-        badge.layer.cornerRadius = 13
-        badge.layer.borderWidth = 2
-        badge.layer.borderColor = AppColor.ink.cgColor
-        badge.layer.masksToBounds = true
-        view.image = nil
-        view.subviews.forEach { $0.removeFromSuperview() }
-        view.frame = badge.frame
-        view.addSubview(badge)
-        return view
-    }
-}
-
-/// Numbered charging-stop pin for the results map.
-private final class StopAnnotation: NSObject, MKAnnotation {
-    let stop: ChargingStop
-    nonisolated var coordinate: CLLocationCoordinate2D { stop.station.coordinate }
-    nonisolated init(stop: ChargingStop) {
-        self.stop = stop
-        super.init()
-    }
 }
