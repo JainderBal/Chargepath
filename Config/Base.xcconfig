@@ -1,0 +1,12 @@
+// Base.xcconfig — attached to the ChargePath target's Debug + Release
+// configurations (baseConfigurationReference).
+//
+// Real secrets live in Config/Secrets.xcconfig, which is git-ignored and
+// never pushed to GitHub. The line below pulls it in *if it exists*
+// (`#include?` is silent when the file is missing), so the project still
+// builds on a fresh clone before you've created it.
+
+// Default so the setting is always defined (empty → app uses seed data).
+CHARGEHUB_API_KEY =
+
+#include? "Secrets.xcconfig"
