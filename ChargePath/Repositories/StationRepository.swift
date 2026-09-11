@@ -71,20 +71,21 @@ final class DefaultStationRepository: StationRepository {
     func loadStations(in region: MKCoordinateRegion) -> Single<[Station]> {
         dataSourceRelay.accept(.loading)
         return service.fetchStations(in: region)
-            .do(onSuccess: { stationLog.info("ChargeHub returned \($0.count) stations") })
-            // The free demo tier returns a tiny fixed sample — keep the richer
-            // Montréal seed set until a geo-query tier is wired, but the log
-            // line above still proves the live call round-tripped.
+            .do(onSuccess: { stationLog.info("Open Charge Map returned \($0.count) stations") })
+            // OCM answers real bounding-box queries, so any non-empty result is
+            // the live truth for this region and wins over the bundled seed.
+            // An empty result (ocean, unmapped area) falls back to the seed so
+            // the map never blanks out.
             .map { [seedStations, dataSourceRelay] fetched -> [Station] in
-                if fetched.count >= seedStations.count {
-                    dataSourceRelay.accept(.live(count: fetched.count))
-                    return fetched
+                if fetched.isEmpty {
+                    dataSourceRelay.accept(.seedSparse)
+                    return seedStations
                 }
-                dataSourceRelay.accept(.seedSparse)
-                return seedStations
+                dataSourceRelay.accept(.live(count: fetched.count))
+                return fetched
             }
             .catch { [seedStations, dataSourceRelay] error in
-                stationLog.warning("ChargeHub fetch failed (\(error)); using seed data")
+                stationLog.warning("Open Charge Map fetch failed (\(error)); using seed data")
                 let isMissingKey = (error as? APIError) == .missingCredentials
                 dataSourceRelay.accept(isMissingKey ? .seedNoKey : .seedNetworkError)
                 return .just(seedStations)
