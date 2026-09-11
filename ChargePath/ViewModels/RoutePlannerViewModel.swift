@@ -23,6 +23,7 @@ final class RoutePlannerViewModel {
     // MARK: Navigation hooks
     var onEditVehicle: (() -> Void)?
     var onSelectStop: ((Station) -> Void)?
+    var onStartNavigation: ((RoutePlan) -> Void)?
 
     // MARK: Outputs
     let stage = BehaviorRelay<Stage>(value: .input)
@@ -79,7 +80,7 @@ final class RoutePlannerViewModel {
                 guard let self else { return }
                 self.isPlanning.accept(false)
                 self.plan.accept(plan)
-                self.routeMeta.accept("\(Int(plan.totalDistanceKm)) km · \(vehicle.name)")
+                self.routeMeta.accept(Self.metaLine(for: plan, vehicle: vehicle))
                 self.stage.accept(.results)
             }, onFailure: { [weak self] _ in
                 self?.isPlanning.accept(false)
@@ -93,5 +94,22 @@ final class RoutePlannerViewModel {
 
     func selectStop(_ stop: ChargingStop) {
         onSelectStop?(stop.station)
+    }
+
+    /// "Start navigation" on the results screen — hands the planned trip to the
+    /// in-app turn-by-turn navigator.
+    func startNavigation() {
+        guard let plan = plan.value else { return }
+        onStartNavigation?(plan)
+    }
+
+    /// "312 km · 4 h 12 min drive · 4 h 46 min with charging · Kestrel Sport"
+    private static func metaLine(for plan: RoutePlan, vehicle: Vehicle) -> String {
+        var parts = ["\(Int(plan.totalDistanceKm)) km", "\(plan.driveTimeText) drive"]
+        if !plan.stops.isEmpty {
+            parts.append("\(plan.totalTripText) with charging")
+        }
+        parts.append(vehicle.name)
+        return parts.joined(separator: " · ")
     }
 }
