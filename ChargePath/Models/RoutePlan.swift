@@ -6,6 +6,7 @@
 //
 
 import CoreLocation
+import Foundation
 
 /// What the user typed / selected on the Route Planner input screen.
 struct TripQuery: Equatable {
@@ -25,13 +26,33 @@ struct RoutePlan: Equatable {
     let routeCoordinates: [CLLocationCoordinate2D]
     let totalDistanceKm: Double
     let stops: [ChargingStop]
+    /// Driving time from MKDirections, seconds — traffic-aware, charging time
+    /// not included.
+    var driveTimeSeconds: TimeInterval = 0
     /// true when geocoding / directions failed and this is the offline
     /// illustrative plan rather than a real MKDirections route.
     var isEstimate: Bool = false
 
+    /// Driving time alone, e.g. "4 h 12 min".
+    var driveTimeText: String { Self.durationText(driveTimeSeconds) }
+
+    /// Driving + every planned charging stop, e.g. "4 h 46 min".
+    var totalTripText: String {
+        let chargeSeconds = stops.reduce(0) { $0 + Double($1.estimatedChargeMinutes) * 60 }
+        return Self.durationText(driveTimeSeconds + chargeSeconds)
+    }
+
+    static func durationText(_ seconds: TimeInterval) -> String {
+        let total = Int(seconds.rounded())
+        let hours = total / 3600
+        let minutes = (total % 3600) / 60
+        return hours > 0 ? "\(hours) h \(minutes) min" : "\(minutes) min"
+    }
+
     static func == (lhs: RoutePlan, rhs: RoutePlan) -> Bool {
         lhs.totalDistanceKm == rhs.totalDistanceKm
             && lhs.stops == rhs.stops
+            && lhs.driveTimeSeconds == rhs.driveTimeSeconds
             && lhs.isEstimate == rhs.isEstimate
     }
 }
