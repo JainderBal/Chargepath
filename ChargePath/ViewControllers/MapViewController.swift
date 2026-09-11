@@ -225,6 +225,7 @@ final class MapViewController: UIViewController {
         viewModel.strings
             .subscribe(onNext: { [weak self] strings in
                 self?.searchField.textField.placeholder = strings.searchPlaceholder
+                self?.segmentToggle.setTitles([strings.segmentAll, strings.segmentBookmarked])
             })
             .disposed(by: disposeBag)
     }
