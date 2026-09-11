@@ -23,39 +23,64 @@ Guidance for Claude Code when working in this repository.
 ## Project
 
 ChargePath is a programmatic-UIKit iOS app (no storyboards, no SwiftUI)
-for finding EV charging stations, planning routes, and running a
-wallet-billed charging session. Data comes from the ChargeHub API, with
-a bundled JSON seed used when no API key is configured.
+for finding EV charging stations, planning routes with charging stops,
+in-app turn-by-turn navigation, and running a wallet-billed charging
+session. Live station data comes from Open Charge Map (ChargeHub is kept
+as a second worked example of the same `StationService` seam); a bundled
+JSON seed is the offline fallback. Turn-by-turn is the Google Navigation
+SDK, behind the `TurnByTurnNavigator` protocol.
 
 - Build: `xcodebuild -project ChargePath.xcodeproj -scheme ChargePath -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build`
-- Test: swap `build` for `test` in the command above (38 tests).
+- Test: swap `build` for `test` in the command above (46 tests).
+- The iOS Simulator sometimes fails the first launch with "Busy /
+  Application failed preflight checks" — `xcrun simctl bootstatus "iPhone 17 Pro" -b`
+  before the test command, then retry.
 
 ## Architecture
 
 MVVM + Coordinators, constructor injection throughout.
 
 - `Models/` — plain value types, no framework imports beyond Foundation/CoreLocation.
-- `Services/` — one responsibility each (HTTP, geocoding, directions,
-  location, key-value storage, payment auth). Everything is behind a
-  protocol so tests can substitute doubles.
+- `Services/` — one responsibility each (HTTP, station APIs, geocoding,
+  directions, turn-by-turn navigation, location, key-value storage,
+  payment auth). Everything is behind a protocol so tests can substitute
+  doubles. Vendor SDKs (Google Navigation) stay isolated here behind
+  `#if canImport(...)` and a protocol seam.
 - `Repositories/` — sit between services and view models; own caching
   and the seed-vs-network decision.
-- `ViewModels/` — no UIKit imports; expose state and intent methods.
+- `ViewModels/` — no UIKit or vendor-SDK imports; expose state and intent
+  methods.
 - `ViewControllers/` — build their views in code; bind to one view model.
 - `Coordinators/` — own navigation and view-controller construction.
 - `App/DependencyContainer.swift` — the single composition root.
+- Screens are MVVM sets: `MapViewController`/`MapViewModel`,
+  `StationDetail…`, `ActivateCharging…`, `ActiveSession…`,
+  `RoutePlanner…`, `Navigation…`, `Settings…`, `VehicleSelection…`,
+  `Wallet…`, `Filter…`.
 
 ## DI rules
 
-- No singletons. Nothing reaches for `.shared`.
+- No app-owned singletons beyond `HTTPSession.shared` (one Alamofire
+  `Session`) and vendor singletons initialised once in `AppDelegate`
+  (`GMSServices`). App code never reaches for `.shared` otherwise.
 - View models receive repositories/services via the initializer, never
-  construct them.
+  construct them. The Navigation screen is the one allowed exception:
+  `GMSMapView` and its navigator are inseparable, so the VC creates the
+  map view and hands the navigator to the VM via `bind(navigator:)`.
 - `DependencyContainer` is the only place that news up concrete types.
 
-## ChargeHub key
+## API keys
 
-`CHARGEHUB_API_KEY` is read from the build settings via
-`Config/Base.xcconfig`, which `#include?`s the git-ignored
-`Config/Secrets.xcconfig`. Copy `Config/Secrets.example.xcconfig` to
-`Config/Secrets.xcconfig` and paste a key. With no key the app runs on
-the bundled seed data.
+All three are read from build settings via `Config/Base.xcconfig`, which
+`#include?`s the git-ignored `Config/Secrets.xcconfig` (copy
+`Config/Secrets.example.xcconfig` to start). Each also accepts a
+same-named environment variable as a fallback.
+
+- `OPEN_CHARGE_MAP_API_KEY` — live map data. Empty ⇒ keyless (rate-limited)
+  then seed fallback.
+- `GOOGLE_MAPS_API_KEY` — Google Navigation SDK. Needs a billing-enabled
+  Google Cloud project with the Navigation + Maps SDKs enabled. Empty ⇒
+  the Navigation screen shows a placeholder. `AppDelegate` calls
+  `GMSServices.provideAPIKey`.
+- `CHARGEHUB_API_KEY` — optional; only the ChargeHub worked-example
+  service uses it.
