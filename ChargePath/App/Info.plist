@@ -25,9 +25,12 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 
-	<!-- ChargeHub API key. Populated at build time from the CHARGEHUB_API_KEY
-	     build setting (Config/Base.xcconfig ← Config/Secrets.xcconfig, git-ignored).
-	     Empty ⇒ the app falls back to bundled seed stations. -->
+	<!-- API keys. Populated at build time from the build settings of the same
+	     name (Config/Base.xcconfig ← Config/Secrets.xcconfig, git-ignored). -->
+	<key>OPEN_CHARGE_MAP_API_KEY</key>
+	<string>$(OPEN_CHARGE_MAP_API_KEY)</string>
+	<key>GOOGLE_MAPS_API_KEY</key>
+	<string>$(GOOGLE_MAPS_API_KEY)</string>
 	<key>CHARGEHUB_API_KEY</key>
 	<string>$(CHARGEHUB_API_KEY)</string>
 
