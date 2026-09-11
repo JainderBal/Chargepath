@@ -8,6 +8,9 @@
 //
 
 import UIKit
+#if canImport(GoogleNavigation)
+import GoogleMaps
+#endif
 
 @main
 final class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -18,7 +21,21 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
     ) -> Bool {
         // Process-level setup only (analytics, logging, appearance proxies).
         // Window/scene wiring lives in SceneDelegate.
+        configureNavigationSDK()
         return true
+    }
+
+    /// Hand the Google Navigation SDK its API key, if one is configured and the
+    /// SDK is linked. Empty key / SDK absent → the Navigation screen shows its
+    /// placeholder instead of a live map.
+    private func configureNavigationSDK() {
+        let key = (Bundle.main.object(forInfoDictionaryKey: "GOOGLE_MAPS_API_KEY") as? String ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else { return }
+        #if canImport(GoogleNavigation)
+        GMSServices.provideAPIKey(key)
+        NavigationEngine.isConfigured = true
+        #endif
     }
 
     // MARK: UISceneSession Lifecycle
