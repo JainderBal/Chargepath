@@ -55,7 +55,8 @@ final class DefaultRouteRepository: RouteRepository {
                     return RoutePlan(origin: from, destination: to,
                                      routeCoordinates: result.polyline,
                                      totalDistanceKm: result.distanceMeters / 1000,
-                                     stops: [])
+                                     stops: [],
+                                     driveTimeSeconds: result.expectedTravelTimeSeconds)
                 }
                 return self.buildPlan(from: from, to: to, directions: result, query: query)
             }
@@ -126,7 +127,8 @@ final class DefaultRouteRepository: RouteRepository {
             destination: to,
             routeCoordinates: directions.polyline,
             totalDistanceKm: totalKm,
-            stops: stops
+            stops: stops,
+            driveTimeSeconds: directions.expectedTravelTimeSeconds
         )
     }
 
@@ -213,6 +215,7 @@ final class DefaultRouteRepository: RouteRepository {
         return RoutePlan(origin: from, destination: to,
                          routeCoordinates: line,
                          totalDistanceKm: 412, stops: stops,
+                         driveTimeSeconds: 4.5 * 3600,
                          isEstimate: true)
     }
 }
