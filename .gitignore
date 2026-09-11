@@ -1,0 +1,36 @@
+# macOS
+.DS_Store
+
+# Xcode - user-specific state
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+# Xcode - build output
+build/
+DerivedData/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/xcode/package.xcworkspace/xcuserdata/
+# Package.resolved IS committed on purpose — it pins exact dependency versions.
+
+# Local secrets — real API keys. The committed Config/Secrets.example.xcconfig
+# is the template; copy it to Config/Secrets.xcconfig and fill it in.
+Config/Secrets.xcconfig
+
+# CocoaPods / Carthage (not used, but ignored defensively)
+Pods/
+Carthage/Build/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
