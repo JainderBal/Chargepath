@@ -14,6 +14,9 @@ import RxSwift
 struct DirectionsResult {
     let polyline: [CLLocationCoordinate2D]
     let distanceMeters: CLLocationDistance
+    /// MKDirections' driving ETA — already factors current traffic for
+    /// `.automobile` requests.
+    let expectedTravelTimeSeconds: TimeInterval
 }
 
 protocol RouteDirectionsService: AnyObject {
@@ -46,7 +49,8 @@ final class MapKitDirectionsService: RouteDirectionsService {
                 route.polyline.getCoordinates(&coords, range: NSRange(location: 0, length: pointCount))
                 observer(.success(DirectionsResult(
                     polyline: coords,
-                    distanceMeters: route.distance
+                    distanceMeters: route.distance,
+                    expectedTravelTimeSeconds: route.expectedTravelTime
                 )))
             }
             return Disposables.create { directions.cancel() }
