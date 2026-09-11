@@ -92,10 +92,21 @@ final class NavigationViewModel {
             .subscribe(onSuccess: { [weak self] in
                 navigator.startGuidance()
                 self?.isNavigating.accept(true)
-            }, onFailure: { [weak self] _ in
-                self?.unavailableText.accept(self?.strings.value.navUnavailable)
+            }, onFailure: { [weak self] error in
+                self?.unavailableText.accept(Self.message(for: error, strings: self?.strings.value))
             })
             .disposed(by: disposeBag)
+    }
+
+    /// `.unavailable` (no key / SDK not linked) reuses the "set your key"
+    /// copy; anything else (route/location failure) surfaces the vendor's
+    /// reason so "I added the key and it still says that" is diagnosable
+    /// instead of reading identically to a missing key.
+    private static func message(for error: Error, strings: Strings?) -> String {
+        if case TurnByTurnError.routeFailed(let reason) = error {
+            return "Couldn't start navigation (\(reason)). Check location permission is granted and, on the simulator, that a location is set (Features ▸ Location)."
+        }
+        return strings?.navUnavailable ?? ""
     }
 
     private func apply(_ update: NavUpdate) {
