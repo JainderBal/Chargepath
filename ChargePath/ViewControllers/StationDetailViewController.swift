@@ -24,6 +24,7 @@ final class StationDetailViewController: UIViewController {
     private let addressLabel = UILabel(font: AppFont.body(14), color: AppColor.stone)
     private let distanceLabel = UILabel(font: AppFont.body(14), color: AppColor.stone)
     private let bookmarkButton = UIButton(type: .system)
+    private let directionsButton = UIButton(type: .system)
     private let connectorRow = UIStackView(axis: .horizontal, spacing: 6)
     private let liveDot = UIView()
     private let liveLabel = UILabel(font: AppFont.body(12), color: AppColor.stone)
@@ -80,9 +81,18 @@ final class StationDetailViewController: UIViewController {
         bookmarkButton.addTarget(self, action: #selector(toggleBookmark), for: .touchUpInside)
         bookmarkButton.accessibilityLabel = "Bookmark this station"
 
+        directionsButton.setImage(UIImage(systemName: "arrow.triangle.turn.up.right.circle.fill"), for: .normal)
+        directionsButton.tintColor = AppColor.ink
+        directionsButton.backgroundColor = AppColor.parchment
+        directionsButton.applyInkOutline(cornerRadius: 23, clip: true)
+        directionsButton.widthAnchor.constraint(equalToConstant: 46).isActive = true
+        directionsButton.heightAnchor.constraint(equalToConstant: 46).isActive = true
+        directionsButton.addTarget(self, action: #selector(startNavigation), for: .touchUpInside)
+        directionsButton.accessibilityLabel = viewModel.strings.value.stationDirections
+
         let header = UIStackView(axis: .horizontal, spacing: AppMetrics.space3,
                                  alignment: .top,
-                                 arrangedSubviews: [titleBlock, bookmarkButton])
+                                 arrangedSubviews: [titleBlock, directionsButton, bookmarkButton])
         content.addArrangedSubview(header)
         content.addArrangedSubview(connectorRow)
 
@@ -175,4 +185,5 @@ final class StationDetailViewController: UIViewController {
     }
 
     @objc private func toggleBookmark() { viewModel.toggleBookmark() }
+    @objc private func startNavigation() { viewModel.startNavigation() }
 }
