@@ -22,12 +22,13 @@ injection throughout:
 
 46 unit tests, Dynamic Type + VoiceOver support.
 
-| Map | Station detail | Route planner | Settings |
+| Map | Station detail | Route planner | Navigation |
 |---|---|---|---|
-| ![Map](docs/screenshots/map.png) | ![Station detail](docs/screenshots/station-detail.png) | ![Route planner](docs/screenshots/route.png) | ![Settings](docs/screenshots/settings.png) |
+| ![Map](docs/screenshots/map.png) | ![Station detail](docs/screenshots/station-detail.png) | ![Route planner](docs/screenshots/route.png) | ![Navigation](docs/screenshots/navigation.png) |
 
-_(A `docs/screenshots/navigation.png` of the turn-by-turn screen still needs to
-be captured.)_
+Map pins cluster into a numbered badge wherever real Open Charge Map density
+would otherwise pile pins on top of each other (`StationClusterAnnotationView`);
+tapping a cluster zooms into it.
 
 ### The charging flow
 
@@ -47,8 +48,11 @@ the map until the session ends.
 
 A full-bleed **real `MKMapView`**. Charging stations are `MKAnnotation`s at
 real latitude/longitude (a gold "bolt" pin, grey when every port is offline,
-orange when selected). Floating over the map: a search field, an All /
-Bookmarked morphing toggle, and a filter button.
+orange when selected). Pins close enough on screen to overlap — routine with
+real Open Charge Map density — collapse into a numbered ink badge
+(`StationClusterAnnotationView`, MapKit's built-in clustering); tapping one
+zooms into it. Floating over the map: a search field, an All / Bookmarked
+morphing toggle, and a filter button.
 
 - Panning/zooming → `MapViewModel.regionChanged` → (debounced 400 ms) →
   `StationRepository.loadStations(in:)` → **Open Charge Map** POI fetch for the
