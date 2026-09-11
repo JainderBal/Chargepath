@@ -71,6 +71,9 @@ final class MapCoordinator: Coordinator {
         viewModel.onStartCharging = { [weak self] station in
             self?.showActivateCharging(for: station)
         }
+        viewModel.onStartNavigation = { [weak self] station in
+            self?.showNavigation(to: station)
+        }
         let detail = StationDetailViewController(viewModel: viewModel)
         detailViewController = detail
         detailViewModel = viewModel
@@ -91,6 +94,19 @@ final class MapCoordinator: Coordinator {
         }
 
         navigationController.present(detail, animated: true)
+    }
+
+    // MARK: In-app navigation
+
+    private func showNavigation(to station: Station) {
+        NavigationEngine.ensureConsent { [weak self] in
+            guard let self else { return }
+            let viewModel = self.container.makeNavigationViewModel(destination: station)
+            let vc = NavigationViewController(viewModel: viewModel)
+            viewModel.onExit = { [weak vc] in vc?.dismiss(animated: true) }
+            let presenter = self.navigationController.presentedViewController ?? self.navigationController
+            presenter.present(vc, animated: true)
+        }
     }
 
     // MARK: Activate Charging → live session
