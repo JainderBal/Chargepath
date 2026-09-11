@@ -1,0 +1,132 @@
+//
+//  GoogleTurnByTurnNavigator.swift
+//  ChargePath
+//
+//  Concrete `TurnByTurnNavigator` over the Google Navigation SDK for iOS.
+//
+//  The whole file is compiled only when the SDK is linked
+//  (`#if canImport(GoogleNavigation)`), so the app still builds and every
+//  other screen still works before the dependency is added in Xcode
+//  (File ▸ Add Package Dependencies ▸ https://github.com/googlemaps/ios-navigation-sdk).
+//  When the SDK is absent, `NavigationEngine.make()` returns an
+//  `UnavailableTurnByTurnNavigator` and the screen shows its placeholder.
+//
+
+import UIKit
+import RxSwift
+
+/// One-call factory the Navigation screen uses to obtain its map view + a
+/// navigator bound to it. Split out so the ViewController never imports the
+/// vendor SDK directly.
+enum NavigationEngine {
+
+    /// `true` once `GMSServices.provideAPIKey` has run with a non-empty key.
+    /// Set by `AppDelegate` at launch.
+    static var isConfigured = false
+
+    static func make() -> (mapView: UIView, navigator: TurnByTurnNavigator) {
+        #if canImport(GoogleNavigation)
+        if isConfigured, let pair = GoogleNavigationFactory.make() {
+            return pair
+        }
+        #endif
+        return (UIView(), UnavailableTurnByTurnNavigator())
+    }
+}
+
+#if canImport(GoogleNavigation)
+import GoogleNavigation
+import GoogleMaps
+import RxRelay
+
+enum GoogleNavigationFactory {
+    static func make() -> (mapView: UIView, navigator: TurnByTurnNavigator)? {
+        let mapView = GMSMapView(frame: .zero)
+        mapView.isNavigationEnabled = true
+        mapView.settings.compassButton = true
+        mapView.cameraMode = .following
+        guard mapView.navigator != nil else { return nil }
+        return (mapView, GoogleTurnByTurnNavigator(mapView: mapView))
+    }
+}
+
+final class GoogleTurnByTurnNavigator: NSObject, TurnByTurnNavigator {
+
+    private let mapView: GMSMapView
+    private let updatesRelay = PublishRelay<NavUpdate>()
+    private let arriveRelay = PublishRelay<Void>()
+
+    private var remainingTime: TimeInterval = 0
+    private var remainingDistance: CLLocationDistance = 0
+
+    init(mapView: GMSMapView) {
+        self.mapView = mapView
+        super.init()
+        mapView.navigator?.add(self)
+        mapView.navigator?.timeUpdateThreshold = 5
+        mapView.navigator?.distanceUpdateThreshold = 50
+    }
+
+    var isAvailable: Bool { mapView.navigator != nil }
+    var updates: Observable<NavUpdate> { updatesRelay.asObservable() }
+    var didArrive: Observable<Void> { arriveRelay.asObservable() }
+
+    func setDestinations(_ waypoints: [NavWaypoint]) -> Single<Void> {
+        Single.create { [mapView] observer in
+            guard let navigator = mapView.navigator else {
+                observer(.failure(TurnByTurnError.unavailable))
+                return Disposables.create()
+            }
+            let gms = waypoints.compactMap {
+                GMSNavigationWaypoint(location: $0.coordinate, title: $0.title)
+            }
+            guard !gms.isEmpty else {
+                observer(.failure(TurnByTurnError.noRoute))
+                return Disposables.create()
+            }
+            navigator.setDestinations(gms) { routeStatus in
+                routeStatus == .OK
+                    ? observer(.success(()))
+                    : observer(.failure(TurnByTurnError.noRoute))
+            }
+            return Disposables.create()
+        }
+    }
+
+    func startGuidance() {
+        mapView.navigator?.isGuidanceActive = true
+        mapView.locationSimulator?.stopSimulation()
+        mapView.cameraMode = .following
+    }
+
+    func stopGuidance() {
+        mapView.navigator?.isGuidanceActive = false
+        mapView.navigator?.clearDestinations()
+    }
+}
+
+extension GoogleTurnByTurnNavigator: GMSNavigatorListener {
+
+    func navigator(_ navigator: GMSNavigator, didUpdateRemainingTime time: TimeInterval) {
+        remainingTime = time
+        emit()
+    }
+
+    func navigator(_ navigator: GMSNavigator, didUpdateRemainingDistance distance: CLLocationDistance) {
+        remainingDistance = distance
+        emit()
+    }
+
+    func navigator(_ navigator: GMSNavigator, didArriveAt waypoint: GMSNavigationWaypoint) {
+        arriveRelay.accept(())
+    }
+
+    private func emit() {
+        updatesRelay.accept(NavUpdate(
+            etaSeconds: remainingTime,
+            distanceMeters: remainingDistance,
+            maneuverText: ""      // the SDK's built-in header renders the maneuver
+        ))
+    }
+}
+#endif
