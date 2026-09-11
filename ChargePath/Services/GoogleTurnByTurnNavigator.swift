@@ -32,12 +32,37 @@ enum NavigationEngine {
         #endif
         return (UIView(), UnavailableTurnByTurnNavigator())
     }
+
+    /// Show Google's terms-of-service dialog once (the Navigation SDK refuses
+    /// to start guidance until it's accepted), then continue. A no-op when the
+    /// SDK isn't linked / configured.
+    static func ensureConsent(then continuation: @escaping () -> Void) {
+        #if canImport(GoogleNavigation)
+        if isConfigured {
+            GoogleNavigationConsent.ensure(then: continuation)
+            return
+        }
+        #endif
+        continuation()
+    }
 }
 
 #if canImport(GoogleNavigation)
 import GoogleNavigation
 import GoogleMaps
 import RxRelay
+
+enum GoogleNavigationConsent {
+    static func ensure(then continuation: @escaping () -> Void) {
+        if GMSNavigationServices.areTermsAndConditionsAccepted() {
+            continuation()
+            return
+        }
+        GMSNavigationServices.showTermsAndConditionsDialogIfNeeded(
+            withCompanyName: "ChargePath"
+        ) { _ in continuation() }
+    }
+}
 
 enum GoogleNavigationFactory {
     static func make() -> (mapView: UIView, navigator: TurnByTurnNavigator)? {
