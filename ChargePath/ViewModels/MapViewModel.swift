@@ -195,7 +195,7 @@ final class MapViewModel {
             .map { source -> String? in
                 switch source {
                 case .seedNoKey:        return "No API key — showing sample data"
-                case .seedNetworkError: return "Can't reach ChargeHub — showing sample data"
+                case .seedNetworkError: return "Can't reach Open Charge Map — showing sample data"
                 case .live, .loading, .seedInitial, .seedSparse: return nil
                 }
             }
