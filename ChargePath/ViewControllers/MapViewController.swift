@@ -69,6 +69,8 @@ final class MapViewController: UIViewController {
         mapView.pointOfInterestFilter = .excludingAll
         mapView.register(StationAnnotationView.self,
                          forAnnotationViewWithReuseIdentifier: StationAnnotationView.reuseID)
+        mapView.register(StationClusterAnnotationView.self,
+                         forAnnotationViewWithReuseIdentifier: StationClusterAnnotationView.reuseID)
         view.addAutoLayoutSubview(mapView)
         mapView.pinEdges(to: view)
 
@@ -281,6 +283,12 @@ final class MapViewController: UIViewController {
 extension MapViewController: MKMapViewDelegate {
 
     func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+        if annotation is MKClusterAnnotation {
+            return mapView.dequeueReusableAnnotationView(
+                withIdentifier: StationClusterAnnotationView.reuseID,
+                for: annotation
+            )
+        }
         guard annotation is StationAnnotation else { return nil }   // keep the blue user dot
         return mapView.dequeueReusableAnnotationView(
             withIdentifier: StationAnnotationView.reuseID,
@@ -289,8 +297,29 @@ extension MapViewController: MKMapViewDelegate {
     }
 
     func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
+        if let cluster = view.annotation as? MKClusterAnnotation {
+            mapView.deselectAnnotation(cluster, animated: false)
+            zoom(to: cluster)
+            return
+        }
         guard let station = (view.annotation as? StationAnnotation)?.station else { return }
         viewModel.selectStation(id: station.id)
+    }
+
+    /// Frames every member of a tapped cluster so the pile splits apart into
+    /// individually-tappable pins.
+    private func zoom(to cluster: MKClusterAnnotation) {
+        var rect = MKMapRect.null
+        for member in cluster.memberAnnotations {
+            let point = MKMapPoint(member.coordinate)
+            rect = rect.union(MKMapRect(x: point.x, y: point.y, width: 0, height: 0))
+        }
+        guard !rect.isNull else { return }
+        mapView.setVisibleMapRect(
+            rect,
+            edgePadding: UIEdgeInsets(top: 80, left: 80, bottom: 80, right: 80),
+            animated: true
+        )
     }
 
     func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
