@@ -169,6 +169,29 @@ final class RouteDirectionsServiceDouble: RouteDirectionsService {
                     to destination: CLLocationCoordinate2D) -> Single<DirectionsResult> { result }
 }
 
+// MARK: Turn-by-turn navigation
+
+final class TurnByTurnNavigatorDouble: TurnByTurnNavigator {
+    var available = true
+    var setDestinationsResult: Single<Void> = .just(())
+    private(set) var receivedWaypoints: [NavWaypoint] = []
+    private(set) var startGuidanceCount = 0
+    private(set) var stopGuidanceCount = 0
+    let updatesRelay = PublishRelay<NavUpdate>()
+    let arriveRelay = PublishRelay<Void>()
+
+    var isAvailable: Bool { available }
+    var updates: Observable<NavUpdate> { updatesRelay.asObservable() }
+    var didArrive: Observable<Void> { arriveRelay.asObservable() }
+
+    func setDestinations(_ waypoints: [NavWaypoint]) -> Single<Void> {
+        receivedWaypoints = waypoints
+        return setDestinationsResult
+    }
+    func startGuidance() { startGuidanceCount += 1 }
+    func stopGuidance() { stopGuidanceCount += 1 }
+}
+
 // MARK: Fixtures
 
 enum Fixture {
