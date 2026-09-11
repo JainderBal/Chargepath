@@ -54,7 +54,10 @@ protocol TurnByTurnNavigator: AnyObject {
     /// Fires once when the driver reaches the final destination.
     var didArrive: Observable<Void> { get }
 
-    /// Compute a route through `waypoints` in order (index 0 is the origin).
+    /// Compute a route that visits `waypoints` in order. The drive always
+    /// starts from the device's current location, so `waypoints` holds only
+    /// the places to head to — charging stops followed by the destination, or
+    /// a single station.
     func setDestinations(_ waypoints: [NavWaypoint]) -> Single<Void>
 
     /// Begin / end voice + on-screen guidance for the route from
