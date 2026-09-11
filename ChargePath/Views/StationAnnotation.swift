@@ -39,6 +39,10 @@ final class StationAnnotationView: MKAnnotationView {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
         frame = CGRect(x: 0, y: 0, width: 42, height: 42)
         centerOffset = CGPoint(x: 0, y: -21)
+        // Real Open Charge Map data can pack many stations into a small area —
+        // let MapKit fold overlapping pins into a StationClusterAnnotationView
+        // instead of stacking them illegibly.
+        clusteringIdentifier = "station"
 
         bubble.frame = bounds
         bubble.layer.cornerRadius = 21
@@ -86,5 +90,54 @@ final class StationAnnotationView: MKAnnotationView {
                 : .identity
         }
         refresh()
+    }
+}
+
+/// Ink pill with a count — what a pile of `StationAnnotation`s collapses into
+/// when they're close enough on screen to overlap. Tapping one zooms in
+/// (`MapViewController.zoom(to:)`) rather than opening a sheet.
+final class StationClusterAnnotationView: MKAnnotationView {
+
+    static let reuseID = "StationClusterAnnotationView"
+
+    private let bubble = UIView()
+    private let countLabel = UILabel()
+
+    override var annotation: MKAnnotation? {
+        didSet { refresh() }
+    }
+
+    override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
+        super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
+        frame = CGRect(x: 0, y: 0, width: 44, height: 44)
+        displayPriority = .required
+        collisionMode = .circle
+
+        bubble.frame = bounds
+        bubble.layer.cornerRadius = 22
+        bubble.backgroundColor = AppColor.ink
+        bubble.layer.borderWidth = 2.5
+        bubble.layer.borderColor = AppColor.gold.cgColor
+        bubble.applyHardShadow(offsetY: 5, opacity: 1)
+        addSubview(bubble)
+
+        countLabel.font = AppFont.slab(15, weight: .bold)
+        countLabel.textColor = AppColor.cream
+        countLabel.textAlignment = .center
+        countLabel.frame = bubble.bounds
+        bubble.addSubview(countLabel)
+
+        refresh()
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    private func refresh() {
+        guard let cluster = annotation as? MKClusterAnnotation else { return }
+        let count = cluster.memberAnnotations.count
+        countLabel.text = "\(count)"
+        isAccessibilityElement = true
+        accessibilityLabel = "\(count) charging stations"
+        accessibilityTraits = .button
     }
 }
