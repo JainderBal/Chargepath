@@ -90,7 +90,16 @@ final class DefaultStationRepository: StationRepository {
                 dataSourceRelay.accept(isMissingKey ? .seedNoKey : .seedNetworkError)
                 return .just(seedStations)
             }
-            .do(onSuccess: { [relay] in relay.accept($0) })
+            // Merge into the cache rather than replacing it: OCM only ever
+            // answers for the currently-panned region, so a wholesale
+            // replace would silently drop any station — bookmarked ones
+            // included — the moment the map moves away from it. Newer data
+            // for a station already cached (fresher live status) wins.
+            .do(onSuccess: { [relay] fetched in
+                var byID = Dictionary(uniqueKeysWithValues: relay.value.map { ($0.id, $0) })
+                for station in fetched { byID[station.id] = station }
+                relay.accept(Array(byID.values))
+            })
     }
 
     func station(withID id: String) -> Station? {
