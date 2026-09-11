@@ -1,0 +1,20 @@
+[
+  { "LocID": 1001, "PortID": 100101, "StatusCode": 1, "StatusTime": "2026-09-06T12:00:00.000+00:00" },
+  { "LocID": 1001, "PortID": 100102, "StatusCode": 2, "StatusTime": "2026-09-06T12:00:00.000+00:00" },
+  { "LocID": 1001, "PortID": 100103, "StatusCode": 1, "StatusTime": "2026-09-06T12:00:00.000+00:00" },
+  { "LocID": 1001, "PortID": 100104, "StatusCode": 3, "StatusTime": "2026-09-05T09:14:00.000+00:00" },
+
+  { "LocID": 1002, "PortID": 100201, "StatusCode": 1, "StatusTime": "2026-09-06T12:00:00.000+00:00" },
+  { "LocID": 1002, "PortID": 100202, "StatusCode": 1, "StatusTime": "2026-09-06T12:00:00.000+00:00" },
+  { "LocID": 1002, "PortID": 100203, "StatusCode": 2, "StatusTime": "2026-09-06T12:00:00.000+00:00" },
+
+  { "LocID": 1003, "PortID": 100301, "StatusCode": 1, "StatusTime": "2026-09-06T12:00:00.000+00:00" },
+  { "LocID": 1003, "PortID": 100302, "StatusCode": 1, "StatusTime": "2026-09-06T12:00:00.000+00:00" },
+
+  { "LocID": 1004, "PortID": 100401, "StatusCode": 1, "StatusTime": "2026-09-06T12:00:00.000+00:00" },
+  { "LocID": 1004, "PortID": 100402, "StatusCode": 2, "StatusTime": "2026-09-06T12:00:00.000+00:00" },
+  { "LocID": 1004, "PortID": 100403, "StatusCode": 1, "StatusTime": "2026-09-06T12:00:00.000+00:00" },
+
+  { "LocID": 1005, "PortID": 100501, "StatusCode": 1, "StatusTime": "2026-09-06T12:00:00.000+00:00" },
+  { "LocID": 1005, "PortID": 100502, "StatusCode": 1, "StatusTime": "2026-09-06T12:00:00.000+00:00" }
+]
