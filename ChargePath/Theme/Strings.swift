@@ -92,6 +92,13 @@ struct Strings {
     let routePlanHint: String
     let routeResultsTitle: String
 
+    // MARK: Navigation
+    let navStartButton: String
+    let navEndButton: String
+    let navArrived: String
+    let navUnavailable: String
+    let stationDirections: String
+
     // MARK: Settings
     let settingsTitle: String
     let settingsVehicleProfile: String
@@ -189,6 +196,12 @@ extension Strings {
         routePlanHint: "We add stops so you never dip below 15% charge.",
         routeResultsTitle: "Charging stops",
 
+        navStartButton: "Start navigation",
+        navEndButton: "End",
+        navArrived: "You’ve arrived",
+        navUnavailable: "Set GOOGLE_MAPS_API_KEY in Config/Secrets.xcconfig to enable in-app turn-by-turn navigation.",
+        stationDirections: "Directions",
+
         settingsTitle: "Settings",
         settingsVehicleProfile: "Vehicle profile",
         settingsLanguage: "Language",
@@ -282,6 +295,12 @@ extension Strings {
         routePlanningButton: "Calcul des arrêts…",
         routePlanHint: "Nous ajoutons des arrêts pour rester au-dessus de 15 %.",
         routeResultsTitle: "Arrêts de recharge",
+
+        navStartButton: "Démarrer la navigation",
+        navEndButton: "Terminer",
+        navArrived: "Vous êtes arrivé",
+        navUnavailable: "Définissez GOOGLE_MAPS_API_KEY dans Config/Secrets.xcconfig pour activer la navigation détaillée dans l’app.",
+        stationDirections: "Itinéraire",
 
         settingsTitle: "Réglages",
         settingsVehicleProfile: "Profil du véhicule",
