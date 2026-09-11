@@ -1,0 +1,101 @@
+[
+  {
+    "LocID": 1001,
+    "LocName": "Marché Central",
+    "StreetAddress": "1500 Rue Sauvé O",
+    "StreetNum": 1500,
+    "Street": "Rue Sauvé O",
+    "City": "Montréal",
+    "State": "QC",
+    "Country": "CAN",
+    "Zip": "H4N 1J8",
+    "Timezone": "America/Toronto",
+    "Latitude": 45.5462,
+    "Longitude": -73.6579,
+    "AccessHours": "Mon - Sun 00:00 ~ 23:59",
+    "Ports": [
+      { "LocID": 1001, "PortID": 100101, "Level": 3, "DisplayName": "A1", "NetworkName": "ChargePath", "KW": 250, "Connectors": [["NACS"]], "ChargingCostDisplay": "$0.38 / kWh" },
+      { "LocID": 1001, "PortID": 100102, "Level": 3, "DisplayName": "A2", "NetworkName": "ChargePath", "KW": 150, "Connectors": [["J1772 Combo"]], "ChargingCostDisplay": "$0.38 / kWh" },
+      { "LocID": 1001, "PortID": 100103, "Level": 3, "DisplayName": "A3", "NetworkName": "ChargePath", "KW": 150, "Connectors": [["J1772 Combo"]], "ChargingCostDisplay": "$0.38 / kWh" },
+      { "LocID": 1001, "PortID": 100104, "Level": 2, "DisplayName": "A4", "NetworkName": "ChargePath", "KW": 7, "Connectors": [["J1772"]], "ChargingCostDisplay": "$0.38 / kWh" }
+    ]
+  },
+  {
+    "LocID": 1002,
+    "LocName": "Plateau Garage",
+    "StreetAddress": "4200 Av du Parc",
+    "StreetNum": 4200,
+    "Street": "Avenue du Parc",
+    "City": "Montréal",
+    "State": "QC",
+    "Country": "CAN",
+    "Zip": "H2W 1S6",
+    "Timezone": "America/Toronto",
+    "Latitude": 45.5219,
+    "Longitude": -73.5960,
+    "AccessHours": "Mon - Sun 06:00 ~ 23:00",
+    "Ports": [
+      { "LocID": 1002, "PortID": 100201, "Level": 3, "DisplayName": "B1", "NetworkName": "ChargePath", "KW": 100, "Connectors": [["J1772 Combo"]], "ChargingCostDisplay": "$0.34 / kWh" },
+      { "LocID": 1002, "PortID": 100202, "Level": 2, "DisplayName": "B2", "NetworkName": "ChargePath", "KW": 7, "Connectors": [["J1772"]], "ChargingCostDisplay": "$0.34 / kWh" },
+      { "LocID": 1002, "PortID": 100203, "Level": 3, "DisplayName": "B3", "NetworkName": "ChargePath", "KW": 100, "Connectors": [["J1772 Combo"]], "ChargingCostDisplay": "$0.34 / kWh" }
+    ]
+  },
+  {
+    "LocID": 1003,
+    "LocName": "Vieux-Port Quai 4",
+    "StreetAddress": "333 Rue de la Commune",
+    "StreetNum": 333,
+    "Street": "Rue de la Commune",
+    "City": "Montréal",
+    "State": "QC",
+    "Country": "CAN",
+    "Zip": "H2Y 2E2",
+    "Timezone": "America/Toronto",
+    "Latitude": 45.5017,
+    "Longitude": -73.5527,
+    "AccessHours": "Mon - Sun 00:00 ~ 23:59",
+    "Ports": [
+      { "LocID": 1003, "PortID": 100301, "Level": 3, "DisplayName": "C1", "NetworkName": "ChargePath", "KW": 250, "Connectors": [["NACS"]], "ChargingCostDisplay": "$0.41 / kWh" },
+      { "LocID": 1003, "PortID": 100302, "Level": 3, "DisplayName": "C2", "NetworkName": "ChargePath", "KW": 250, "Connectors": [["NACS"]], "ChargingCostDisplay": "$0.41 / kWh" }
+    ]
+  },
+  {
+    "LocID": 1004,
+    "LocName": "Rosemont Co-op",
+    "StreetAddress": "2870 Rue Masson",
+    "StreetNum": 2870,
+    "Street": "Rue Masson",
+    "City": "Montréal",
+    "State": "QC",
+    "Country": "CAN",
+    "Zip": "H1Y 1W9",
+    "Timezone": "America/Toronto",
+    "Latitude": 45.5530,
+    "Longitude": -73.5760,
+    "AccessHours": "Mon - Sun 07:00 ~ 22:00",
+    "Ports": [
+      { "LocID": 1004, "PortID": 100401, "Level": 3, "DisplayName": "D1", "NetworkName": "ChargePath", "KW": 180, "Connectors": [["J1772 Combo"]], "ChargingCostDisplay": "$0.29 / kWh" },
+      { "LocID": 1004, "PortID": 100402, "Level": 3, "DisplayName": "D2", "NetworkName": "ChargePath", "KW": 180, "Connectors": [["NACS"]], "ChargingCostDisplay": "$0.29 / kWh" },
+      { "LocID": 1004, "PortID": 100403, "Level": 2, "DisplayName": "D3", "NetworkName": "ChargePath", "KW": 11, "Connectors": [["J1772"]], "ChargingCostDisplay": "$0.29 / kWh" }
+    ]
+  },
+  {
+    "LocID": 1005,
+    "LocName": "Laval Nord Relay",
+    "StreetAddress": "2100 Boul le Corbusier",
+    "StreetNum": 2100,
+    "Street": "Boulevard le Corbusier",
+    "City": "Laval",
+    "State": "QC",
+    "Country": "CAN",
+    "Zip": "H7S 2C9",
+    "Timezone": "America/Toronto",
+    "Latitude": 45.5641,
+    "Longitude": -73.7486,
+    "AccessHours": "Mon - Sun 00:00 ~ 23:59",
+    "Ports": [
+      { "LocID": 1005, "PortID": 100501, "Level": 3, "DisplayName": "E1", "NetworkName": "ChargePath", "KW": 350, "Connectors": [["NACS"]], "ChargingCostDisplay": "$0.36 / kWh" },
+      { "LocID": 1005, "PortID": 100502, "Level": 3, "DisplayName": "E2", "NetworkName": "ChargePath", "KW": 350, "Connectors": [["J1772 Combo"]], "ChargingCostDisplay": "$0.36 / kWh" }
+    ]
+  }
+]
